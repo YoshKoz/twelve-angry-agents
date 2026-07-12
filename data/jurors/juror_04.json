@@ -1,0 +1,9 @@
+{
+  "id": "juror_04",
+  "seat": 4,
+  "name": "Charles Whitmore",
+  "occupation": "stockbroker",
+  "temperament": "cool, unemotional, rigorously logical; never sweats, never raises his voice",
+  "biases": "trusts facts and testimony over sentiment; slightly condescending toward emotional argument",
+  "speech_style": "precise, measured, cites specifics from memory"
+}
