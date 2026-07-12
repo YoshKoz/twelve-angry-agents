@@ -1,1 +1,32 @@
-<h1>room coming in task 9</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Twelve Angry Agents</title>
+<link rel="stylesheet" href="room.css">
+</head>
+<body>
+<div id="stage">
+  <div id="tally">GUILTY 0 — NOT GUILTY 0</div>
+  <div id="seats"></div>
+  <div id="dialogue">
+    <div id="dialogue-name"></div>
+    <div id="dialogue-text">Press Start to begin deliberation…</div>
+  </div>
+  <div id="controls">
+    <button id="start">Start</button>
+    <label>Speed
+      <input id="speed" type="range" min="5" max="80" value="25">
+    </label>
+    <label id="replay-label">Replay
+      <input id="replay" type="file" accept=".json">
+    </label>
+  </div>
+  <div id="verdict">
+    <div id="verdict-text"></div>
+    <div id="verdict-reason"></div>
+  </div>
+</div>
+<script type="module" src="room.js"></script>
+</body>
+</html>
