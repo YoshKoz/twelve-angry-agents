@@ -22,8 +22,8 @@ function buildSeats() {
     d.id = "seat-" + j.seat;
     d.dataset.vote = "unknown";
     d.innerHTML =
-      `<div class="avatar">${j.seat}</div>` +
-      `<div class="plate">Juror #${j.seat}<br>${j.occupation}</div>`;
+      `<div class="avatar">${j.emoji || j.seat}</div>` +
+      `<div class="plate">${j.name}<br>${j.occupation}</div>`;
     box.appendChild(d);
   }
 }
@@ -55,6 +55,23 @@ function render() {
   if (state.error) {
     el("dialogue-name").textContent = "ERROR";
     el("dialogue-text").textContent = state.error;
+  }
+  renderSidePanel();
+}
+
+function renderSidePanel() {
+  // case file
+  if (state.caseText) {
+    el("case-text").textContent = state.caseText;
+  }
+  // prompt
+  if (state.prompt) {
+    el("prompt-system").textContent = state.prompt.system || "";
+    el("prompt-user").textContent = state.prompt.user || "";
+  }
+  // reasoning
+  if (state.reasoning) {
+    el("reasoning-text").textContent = state.reasoning.raw || "";
   }
 }
 
@@ -119,6 +136,11 @@ el("dialogue").addEventListener("click", () => {
     busy = false;
     showNext();
   }
+});
+
+// Case file collapse toggle.
+el("case-toggle").addEventListener("click", () => {
+  el("case-panel").classList.toggle("collapsed");
 });
 
 function enqueue(ev) {

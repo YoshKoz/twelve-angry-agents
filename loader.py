@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-REQUIRED_FIELDS = ("id", "seat", "name", "occupation", "temperament",
+REQUIRED_FIELDS = ("id", "seat", "emoji", "name", "occupation", "temperament",
                    "biases", "speech_style")
 
 

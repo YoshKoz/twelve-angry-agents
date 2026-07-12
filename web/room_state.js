@@ -3,7 +3,7 @@
 
 export function initialState() {
   return {
-    jurors: [],        // [{seat, name, occupation}]
+    jurors: [],        // [{seat, name, occupation, emoji}]
     activeSeat: null,  // seat currently lit
     dialogue: null,    // {seat, name, speech} last spoken
     votes: {},         // seat -> "guilty"|"not_guilty"|"undecided"
@@ -11,6 +11,9 @@ export function initialState() {
     voting: false,     // between vote_called and vote_result
     verdict: null,     // {verdict, reason}
     error: null,
+    caseText: null,    // case file text
+    prompt: null,      // {seat, system, user}
+    reasoning: null,   // {seat, raw, mode}
   };
 }
 
@@ -18,7 +21,8 @@ export function applyEvent(state, ev) {
   const s = { ...state };
   switch (ev.type) {
     case "case":
-      break;                              // shown once at start; no state
+      s.caseText = ev.text;
+      break;
     case "roster":
       s.jurors = ev.jurors;
       break;
@@ -41,6 +45,12 @@ export function applyEvent(state, ev) {
       break;
     case "error":
       s.error = ev.message;
+      break;
+    case "prompt":
+      s.prompt = { seat: ev.seat, system: ev.system, user: ev.user };
+      break;
+    case "reasoning":
+      s.reasoning = { seat: ev.seat, raw: ev.raw, mode: ev.mode };
       break;
     default:
       throw new Error("unknown event type: " + ev.type);

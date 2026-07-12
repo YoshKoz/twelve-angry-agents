@@ -2,7 +2,7 @@ import pytest
 
 from loader import load_cards, load_case
 
-REQUIRED = ("id", "seat", "name", "occupation", "temperament",
+REQUIRED = ("id", "seat", "emoji", "name", "occupation", "temperament",
             "biases", "speech_style")
 
 

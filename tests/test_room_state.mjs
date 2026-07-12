@@ -5,8 +5,8 @@ import { initialState, applyEvent } from "../web/room_state.js";
 const CANNED = [
   { type: "case", text: "the case" },
   { type: "roster", jurors: [
-    { seat: 1, name: "Walt", occupation: "coach" },
-    { seat: 8, name: "Davis", occupation: "architect" },
+    { seat: 1, name: "Walt", occupation: "coach", emoji: "\uD83C\uDFC8" },
+    { seat: 8, name: "Davis", occupation: "architect", emoji: "\uD83E\uDD14" },
   ]},
   { type: "vote_called" },
   { type: "vote_result",
@@ -14,6 +14,8 @@ const CANNED = [
     tally: { guilty: 1, not_guilty: 1, undecided: 0 } },
   { type: "speaker", seat: 8 },
   { type: "speech", seat: 8, name: "Davis", speech: "Let's talk." },
+  { type: "prompt", seat: 8, system: "sys", user: "user txt" },
+  { type: "reasoning", seat: 8, raw: '{"speech":"hi"}', mode: "speak" },
   { type: "verdict", verdict: "hung", reason: "deadlock" },
 ];
 
@@ -49,4 +51,30 @@ test("applyEvent does not mutate the input state", () => {
 test("error event stored", () => {
   const s = applyEvent(initialState(), { type: "error", message: "boom" });
   assert.equal(s.error, "boom");
+});
+
+test("case event stores caseText", () => {
+  const s = applyEvent(initialState(), { type: "case", text: "the case file" });
+  assert.equal(s.caseText, "the case file");
+});
+
+test("roster includes emoji", () => {
+  const s = applyEvent(initialState(), {
+    type: "roster", jurors: [{ seat: 1, name: "Walt", occupation: "c", emoji: "\uD83C\uDFC8" }]
+  });
+  assert.equal(s.jurors[0].emoji, "\uD83C\uDFC8");
+});
+
+test("prompt event stored", () => {
+  const s = applyEvent(initialState(), { type: "prompt", seat: 8, system: "sys", user: "u" });
+  assert.equal(s.prompt.seat, 8);
+  assert.equal(s.prompt.system, "sys");
+  assert.equal(s.prompt.user, "u");
+});
+
+test("reasoning event stored", () => {
+  const s = applyEvent(initialState(), { type: "reasoning", seat: 8, raw: '{"v":"g"}', mode: "vote" });
+  assert.equal(s.reasoning.seat, 8);
+  assert.equal(s.reasoning.raw, '{"v":"g"}');
+  assert.equal(s.reasoning.mode, "vote");
 });

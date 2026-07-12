@@ -60,3 +60,20 @@ def ask_json(system_prompt, user_prompt, required_keys, timeout=120, retries=3):
                   + "no prose: " + schema_hint)
     raise MalformedReply(
         f"no valid JSON with keys {required_keys} after {retries} attempts")
+
+
+def ask_json_detailed(system_prompt, user_prompt, required_keys,
+                      timeout=120, retries=3):
+    """Like ask_json, but returns (parsed, raw_text, system_prompt, user_prompt_used)."""
+    schema_hint = json.dumps({k: "..." for k in required_keys})
+    prompt = user_prompt
+    for _ in range(retries):
+        text = ask(system_prompt, prompt, timeout=timeout)
+        obj = _extract_json(text)
+        if obj is not None and all(k in obj for k in required_keys):
+            return (obj, text, system_prompt, prompt)
+        prompt = (user_prompt
+                  + "\n\nReturn ONLY valid JSON matching this schema, "
+                  + "no prose: " + schema_hint)
+    raise MalformedReply(
+        f"no valid JSON with keys {required_keys} after {retries} attempts")

@@ -8,19 +8,46 @@
 <body>
 <div id="stage">
   <div id="tally">GUILTY 0 — NOT GUILTY 0</div>
-  <div id="seats"></div>
-  <div id="dialogue">
-    <div id="dialogue-name"></div>
-    <div id="dialogue-text">Press Start to begin deliberation…</div>
-  </div>
-  <div id="controls">
-    <button id="start">Start</button>
-    <label>Speed
-      <input id="speed" type="range" min="5" max="80" value="25">
-    </label>
-    <label id="replay-label">Replay
-      <input id="replay" type="file" accept=".json">
-    </label>
+  <div id="main">
+    <div id="left">
+      <div id="seats"></div>
+      <div id="dialogue">
+        <div id="dialogue-name"></div>
+        <div id="dialogue-text">Press Start to begin deliberation…</div>
+      </div>
+      <div id="controls">
+        <button id="start">Start</button>
+        <label>Speed
+          <input id="speed" type="range" min="5" max="80" value="25">
+        </label>
+        <label id="replay-label">Replay
+          <input id="replay" type="file" accept=".json">
+        </label>
+      </div>
+    </div>
+    <div id="sidepanel">
+      <div id="case-panel" class="panel-section">
+        <div class="panel-header" id="case-toggle">&#9660; Case File</div>
+        <div id="case-body" class="panel-body">
+          <pre id="case-text"></pre>
+        </div>
+      </div>
+      <div id="prompt-panel" class="panel-section">
+        <div class="panel-header">Prompt</div>
+        <div class="panel-body">
+          <div class="panel-label">System</div>
+          <pre id="prompt-system" class="trace-box"></pre>
+          <div class="panel-label">User</div>
+          <pre id="prompt-user" class="trace-box"></pre>
+        </div>
+      </div>
+      <div id="reasoning-panel" class="panel-section">
+        <div class="panel-header">Raw Output</div>
+        <div class="panel-body">
+          <pre id="reasoning-text" class="trace-box"></pre>
+        </div>
+      </div>
+    </div>
   </div>
   <div id="verdict">
     <div id="verdict-text"></div>

@@ -42,7 +42,8 @@ class Deliberation:
         """Run the deliberation to a verdict. Returns the verdict string."""
         self.emit({"type": "case", "text": self.case_text})
         self.emit({"type": "roster", "jurors": [
-            {"seat": s, "name": c["name"], "occupation": c["occupation"]}
+            {"seat": s, "name": c["name"], "occupation": c["occupation"],
+             "emoji": c.get("emoji", "")}
             for s, c in sorted(self.cards.items())]})
         self._call_vote()                    # forced opening ballot
         while self.verdict is None:
@@ -86,6 +87,16 @@ class Deliberation:
         self._rr_next = seat % 12 + 1
         return seat
 
+    def _emit_trace(self, seat, reply):
+        if "_prompt" in reply:
+            self.emit({"type": "prompt", "seat": seat,
+                       "system": reply["_prompt"]["system"],
+                       "user": reply["_prompt"]["user"]})
+        if "_raw_output" in reply:
+            self.emit({"type": "reasoning", "seat": seat,
+                       "raw": reply["_raw_output"],
+                       "mode": "speak" if "speech" in reply else "vote"})
+
     # --- juror speaks ----------------------------------------------------
     def _call_on(self, seat):
         card = self.cards[seat]
@@ -97,6 +108,7 @@ class Deliberation:
             self.emit({"type": "speech", "seat": seat, "name": card["name"],
                        "speech": f"(Juror #{seat} passes.)"})
             return
+        self._emit_trace(seat, reply)
         self.transcript.append({"seat": seat, "name": card["name"],
                                 "speech": reply["speech"]})
         self.leans[seat] = {"lean": reply.get("lean", "undecided"),
@@ -115,12 +127,16 @@ class Deliberation:
                 r = self.juror_fn(self.cards[seat], self.case_text,
                                   self.transcript, "vote")
                 v = r.get("vote")
-                return v if v in VOTE_VALUES else "undecided"
+                return (v if v in VOTE_VALUES else "undecided", r)
             except Exception:
-                return "undecided"
+                return ("undecided", {})
 
         with ThreadPoolExecutor(max_workers=12) as pool:
-            votes = dict(zip(seats, pool.map(one_vote, seats)))
+            results = dict(zip(seats, pool.map(one_vote, seats)))
+        votes = {}
+        for seat, (v, reply) in results.items():
+            votes[seat] = v
+            self._emit_trace(seat, reply)
         counts = tally(votes)
         self.last_tally = counts
         self.spoke_since_vote = False
