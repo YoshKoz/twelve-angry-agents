@@ -2,8 +2,8 @@
 
 HONESTY_RULE = (
     "Reason ONLY from the evidence and statements in this room. Do NOT use any "
-    "outside knowledge, and do NOT draw on recognition of any book or story. "
-    "You are this person, deciding this case now, for the first time."
+    "outside knowledge, and do NOT draw on recognition of any book, film, or "
+    "story. You are this person, deciding this case now, for the first time."
 )
 
 

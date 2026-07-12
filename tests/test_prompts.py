@@ -25,9 +25,10 @@ def test_juror_system_prompt_has_card_fields_but_no_script_hints():
                   "biases", "speech_style"):
         assert str(CARD[field]) in sys or field == "seat"
     assert "Juror #3" in sys
-    # blind flip: no dissent/plot hints anywhere
-    for word in ("dissent", "film", "movie", "holdout", "12 Angry"):
-        assert word.lower() not in sys.lower()
+    # blind flip: no dissent/plot hints (honesty rule's own wording exempt)
+    body = prompts.juror_system_prompt(CARD).replace(prompts.HONESTY_RULE, "")
+    for word in ("dissent", "holdout", "fonda", "12 angry"):
+        assert word.lower() not in body.lower()
 
 
 def test_format_transcript_lines_and_empty():
