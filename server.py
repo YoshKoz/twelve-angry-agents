@@ -6,6 +6,7 @@ v1 limitation: single event queue = one viewer per run.
 
 import asyncio
 import json
+import logging
 import threading
 
 from fastapi import FastAPI
@@ -16,9 +17,25 @@ from live_agents import live_foreman_fn, live_juror_fn
 from loader import load_cards, load_case
 from orchestrator import Deliberation
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
-queue: asyncio.Queue = asyncio.Queue()
+_queue: asyncio.Queue | None = None
 _running = threading.Event()
+
+
+def _get_queue():
+    global _queue
+    if _queue is None:
+        _queue = asyncio.Queue()
+    return _queue
+
+
+@app.on_event("startup")
+async def _init_queue():
+    global _queue
+    _queue = asyncio.Queue()
+    logger.info("event queue created")
 
 
 @app.post("/start")
@@ -27,9 +44,11 @@ async def start():
         return {"status": "already-running"}
     _running.set()
     loop = asyncio.get_running_loop()
+    q = _get_queue()
 
     def emit(event):
-        loop.call_soon_threadsafe(queue.put_nowait, event)
+        logger.debug("emit: %s", event.get("type"))
+        loop.call_soon_threadsafe(q.put_nowait, event)
 
     delib = Deliberation(load_case(), load_cards(),
                          live_juror_fn, live_foreman_fn, emit)
@@ -37,7 +56,9 @@ async def start():
     def work():
         try:
             delib.run()
-        except Exception as exc:       # surface, never swallow
+            logger.info("deliberation finished: %s", delib.verdict)
+        except Exception as exc:
+            logger.exception("deliberation crashed")
             emit({"type": "error", "message": f"{type(exc).__name__}: {exc}"})
         finally:
             _running.clear()
@@ -48,9 +69,11 @@ async def start():
 
 @app.get("/events")
 async def events():
+    q = _get_queue()
+
     async def stream():
         while True:
-            event = await queue.get()
+            event = await q.get()
             yield f"data: {json.dumps(event)}\n\n"
     return StreamingResponse(stream(), media_type="text/event-stream")
 
