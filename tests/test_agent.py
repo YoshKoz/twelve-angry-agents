@@ -57,3 +57,38 @@ def test_ask_retries_once_on_timeout_then_raises():
         with pytest.raises(agent.AgentError, match="timed out"):
             agent.ask("s", "u", timeout=5)
     assert run.call_count == 2
+
+
+def test_ask_json_parses_clean_json():
+    with patch("agent.ask", return_value='{"speech": "hi", "lean": "guilty"}'):
+        obj = agent.ask_json("s", "u", ["speech", "lean"])
+    assert obj == {"speech": "hi", "lean": "guilty"}
+
+
+def test_ask_json_extracts_json_from_surrounding_prose():
+    reply = 'Here is my answer:\n{"vote": "not_guilty"}\nThanks!'
+    with patch("agent.ask", return_value=reply):
+        assert agent.ask_json("s", "u", ["vote"]) == {"vote": "not_guilty"}
+
+
+def test_ask_json_retries_on_malformed_with_schema_reminder():
+    with patch("agent.ask", side_effect=["not json at all",
+                                         '{"vote": "guilty"}']) as ask:
+        obj = agent.ask_json("s", "u", ["vote"])
+    assert obj == {"vote": "guilty"}
+    assert ask.call_count == 2
+    retry_prompt = ask.call_args_list[1][0][1]
+    assert "ONLY valid JSON" in retry_prompt
+    assert "vote" in retry_prompt
+
+
+def test_ask_json_retries_on_missing_required_key():
+    with patch("agent.ask", side_effect=['{"wrong": 1}', '{"vote": "guilty"}']):
+        assert agent.ask_json("s", "u", ["vote"]) == {"vote": "guilty"}
+
+
+def test_ask_json_raises_malformed_after_retries():
+    with patch("agent.ask", side_effect=["bad", "bad", "bad"]) as ask:
+        with pytest.raises(agent.MalformedReply):
+            agent.ask_json("s", "u", ["vote"], retries=3)
+    assert ask.call_count == 3

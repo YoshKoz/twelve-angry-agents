@@ -31,3 +31,32 @@ def ask(system_prompt, user_prompt, timeout=120):
             return proc.stdout.strip()
         last_err = f"claude -p exit {proc.returncode}: {proc.stderr.strip()}"
     raise AgentError(last_err)
+
+
+def _extract_json(text):
+    """Best-effort: parse the outermost {...} block. Returns dict or None."""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end <= start:
+        return None
+    try:
+        obj = json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def ask_json(system_prompt, user_prompt, required_keys, timeout=120, retries=3):
+    """ask(), then parse + validate JSON. Retries with a schema reminder."""
+    schema_hint = json.dumps({k: "..." for k in required_keys})
+    prompt = user_prompt
+    for _ in range(retries):
+        text = ask(system_prompt, prompt, timeout=timeout)
+        obj = _extract_json(text)
+        if obj is not None and all(k in obj for k in required_keys):
+            return obj
+        prompt = (user_prompt
+                  + "\n\nReturn ONLY valid JSON matching this schema, "
+                  + "no prose: " + schema_hint)
+    raise MalformedReply(
+        f"no valid JSON with keys {required_keys} after {retries} attempts")
