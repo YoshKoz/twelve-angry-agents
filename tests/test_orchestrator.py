@@ -110,3 +110,92 @@ def test_write_transcript_dumps_all_events(tmp_path):
     saved = json.loads(path.read_text())
     assert saved == events
     assert path.name == "test.json"
+
+
+def split_juror(guilty_seats):
+    """Jurors in guilty_seats vote guilty, the rest not_guilty."""
+    def fn(card, case_text, transcript, mode):
+        if mode == "speak":
+            return {"speech": f"J{card['seat']} speaks.",
+                    "lean": "undecided", "confidence": 0.5}
+        v = "guilty" if card["seat"] in guilty_seats else "not_guilty"
+        return {"vote": v}
+    return fn
+
+
+def test_run_unanimous_on_opening_vote(tmp_path):
+    events, emit = collect()
+    d = make_delib(make_juror(vote="not_guilty"), scripted_foreman([]),
+                   emit, tmp_path)
+    assert d.run() == "not_guilty"
+    types = [e["type"] for e in events]
+    assert types == ["case", "roster", "vote_called", "vote_result",
+                     "verdict"]
+    assert (tmp_path / "test.json").exists()
+
+
+def test_run_foreman_drives_discussion_then_declares_hung(tmp_path):
+    events, emit = collect()
+    foreman = scripted_foreman([
+        {"action": "call_on", "target": 8},
+        {"action": "call_on", "target": 3},
+        {"action": "declare", "verdict": "hung", "reason": "deadlock"},
+    ])
+    d = make_delib(split_juror({1, 2, 3, 4, 5, 6}), foreman, emit, tmp_path)
+    assert d.run() == "hung"
+    speeches = [e for e in events if e["type"] == "speech"]
+    assert [s["seat"] for s in speeches] == [8, 3]
+    assert events[-1] == {"type": "verdict", "verdict": "hung",
+                          "reason": "deadlock"}
+
+
+def test_run_turn_cap_forces_hung(tmp_path):
+    events, emit = collect()
+    def always_call_on(transcript, last_tally, turn, turn_cap):
+        return {"action": "call_on", "target": 8}
+    d = make_delib(split_juror({1}), always_call_on, emit, tmp_path, cap=5)
+    assert d.run() == "hung"
+    assert events[-1]["reason"] == "turn cap reached"
+    speeches = [e for e in events if e["type"] == "speech"]
+    assert len(speeches) == 5
+
+
+def test_no_back_to_back_votes(tmp_path):
+    events, emit = collect()
+    foreman = scripted_foreman([
+        {"action": "call_vote"},                  # right after opening vote
+        {"action": "declare", "verdict": "hung", "reason": "x"},
+    ])
+    d = make_delib(split_juror({1, 2, 3}), foreman, emit, tmp_path)
+    d.run()
+    types = [e["type"] for e in events]
+    # only ONE vote_called (the forced opener); second call_vote was
+    # converted to a round-robin call_on
+    assert types.count("vote_called") == 1
+    assert "speech" in types
+
+
+def test_premature_declare_rejected(tmp_path):
+    events, emit = collect()
+    foreman = scripted_foreman([
+        {"action": "declare", "verdict": "guilty", "reason": "im tired"},
+        {"action": "declare", "verdict": "hung", "reason": "ok fine"},
+    ])
+    d = make_delib(split_juror({1, 2, 3}), foreman, emit, tmp_path)
+    assert d.run() == "hung"       # guilty declare bounced (tally not 12-0)
+    speeches = [e for e in events if e["type"] == "speech"]
+    assert len(speeches) == 1      # bounce became a round-robin call_on
+
+
+def test_malformed_foreman_falls_back_to_round_robin(tmp_path):
+    events, emit = collect()
+    calls = {"n": 0}
+    def flaky_foreman(transcript, last_tally, turn, turn_cap):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("malformed")
+        return {"action": "declare", "verdict": "hung", "reason": "x"}
+    d = make_delib(split_juror({1, 2}), flaky_foreman, emit, tmp_path)
+    assert d.run() == "hung"
+    speeches = [e for e in events if e["type"] == "speech"]
+    assert [s["seat"] for s in speeches] == [1]   # round-robin starts at 1

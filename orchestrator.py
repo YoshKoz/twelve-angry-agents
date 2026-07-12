@@ -37,6 +37,55 @@ class Deliberation:
         self.events.append(event)
         self._emit(event)
 
+    # --- main loop ---------------------------------------------------------
+    def run(self):
+        """Run the deliberation to a verdict. Returns the verdict string."""
+        self.emit({"type": "case", "text": self.case_text})
+        self.emit({"type": "roster", "jurors": [
+            {"seat": s, "name": c["name"], "occupation": c["occupation"]}
+            for s, c in sorted(self.cards.items())]})
+        self._call_vote()                    # forced opening ballot
+        while self.verdict is None:
+            self.turn += 1
+            if self.turn > self.turn_cap:
+                self._declare("hung", "turn cap reached")
+                break
+            self._foreman_turn()
+        self._write_transcript()
+        return self.verdict
+
+    def _foreman_turn(self):
+        try:
+            action = self.foreman_fn(self.transcript, self.last_tally,
+                                     self.turn, self.turn_cap)
+        except Exception:
+            self._call_on(self._round_robin_seat())
+            return
+        kind = action.get("action")
+        if kind == "call_on" and action.get("target") in self.cards:
+            self._call_on(action["target"])
+        elif kind == "call_vote":
+            if self.spoke_since_vote:
+                self._call_vote()
+            else:                      # no back-to-back ballots
+                self._call_on(self._round_robin_seat())
+        elif (kind == "declare"
+              and action.get("verdict") in ("guilty", "not_guilty", "hung")):
+            counts = self.last_tally or {}
+            if (action["verdict"] != "hung"
+                    and counts.get(action["verdict"], 0) != 12):
+                # premature declare without a unanimous ballot: rejected
+                self._call_on(self._round_robin_seat())
+            else:
+                self._declare(action["verdict"], action.get("reason", ""))
+        else:                          # unknown/invalid action
+            self._call_on(self._round_robin_seat())
+
+    def _round_robin_seat(self):
+        seat = self._rr_next
+        self._rr_next = seat % 12 + 1
+        return seat
+
     # --- juror speaks ----------------------------------------------------
     def _call_on(self, seat):
         card = self.cards[seat]
