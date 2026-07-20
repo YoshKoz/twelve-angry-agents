@@ -1,180 +1,405 @@
-/* Hot, cramped jury room -- single screen, no scrolling. */
+/* 1957 jury room: smoke-slate walls, tungsten lamplight, court paper.
+   Single screen, no scrolling. */
+
+:root {
+  --wall:      #23282b;   /* cigarette-smoke slate */
+  --wall-deep: #181c1e;
+  --tungsten:  #e9c398;   /* warm lamplight */
+  --paper:     #ece4d2;   /* court-document cream */
+  --paper-dim: #b9b0a0;
+  --oak:       #6d5236;   /* table wood */
+  --brass:     #c2a262;   /* nameplate brass */
+  --guilty:    #a63d33;   /* dried brick red */
+  --acquit:    #587f63;   /* billiard green */
+
+  --display: "DM Serif Display", Georgia, serif;
+  --body:    "Crimson Pro", Georgia, serif;
+  --sans:    "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:    ui-monospace, "Cascadia Mono", "Courier New", monospace;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; overflow: hidden; font-family: Georgia, serif; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--body); color: var(--paper); }
 
 #stage {
   height: 100%;
   display: flex; flex-direction: column;
-  background: linear-gradient(180deg, #6b5537 0%, #4a3a26 55%, #2e2418 100%);
-  color: #f3ead8;
+  background:
+    radial-gradient(120% 90% at 50% -10%,
+      rgba(233, 195, 152, .14) 0%, rgba(233, 195, 152, 0) 55%),
+    linear-gradient(180deg, var(--wall) 0%, var(--wall-deep) 100%);
 }
 
-#tally {
-  text-align: center; padding: 10px;
-  font-size: 1.4rem; letter-spacing: 2px;
-  background: rgba(0,0,0,.35);
+/* ---- docket header: title left, tally scale right ---- */
+#docket {
   flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px;
+  padding: 10px 24px 12px;
+  border-bottom: 1px solid rgba(194, 162, 98, .35);
+  background: rgba(0, 0, 0, .28);
+}
+#docket-case {
+  font-family: var(--sans);
+  font-size: .78rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+#docket h1 {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 1px;
+  color: var(--tungsten);
+  line-height: 1.15;
+}
+
+#tally-wrap { text-align: right; min-width: 300px; }
+#tally {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 2px;
+  color: var(--paper);
+  margin-bottom: 5px;
 }
 #tally.bump { animation: bump .4s ease; }
-@keyframes bump { 50% { transform: scale(1.15); } }
+@keyframes bump { 50% { transform: scale(1.08); } }
 
-#main {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
+/* the scale: 12 ballot slips, guilty fills from the left,
+   acquittal from the right, open seats stay brass-rimmed */
+#tally-bar {
+  display: flex; gap: 3px; justify-content: flex-end;
 }
+.seg {
+  width: 22px; height: 9px;
+  border-radius: 2px;
+  border: 1px solid rgba(194, 162, 98, .55);
+  background: transparent;
+  transition: background .45s ease, border-color .45s ease;
+}
+.seg-guilty { background: var(--guilty); border-color: var(--guilty); }
+.seg-acquit { background: var(--acquit); border-color: var(--acquit); }
+
+#tally-legend {
+  margin-top: 4px;
+  display: flex; gap: 12px; justify-content: flex-end;
+  font-family: var(--sans);
+  font-size: .68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.legend-guilty { color: #c96b60; }
+.legend-open   { color: var(--paper-dim); }
+.legend-acquit { color: #7ea98c; }
+
+#main { flex: 1; display: flex; overflow: hidden; }
 
 #left {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: flex; flex-direction: column;
   min-width: 0;
 }
 
+/* ---- the twelve seats ---- */
 #seats {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 10px; padding: 16px 20px 8px;
+  gap: 12px;
+  padding: 18px 24px 8px;
   align-content: center;
 }
 .seat {
   text-align: center;
-  opacity: .45; filter: grayscale(.4);
-  transition: opacity .3s, transform .3s;
-  border-radius: 8px; padding: 6px;
-  border-bottom: 6px solid #777;      /* vote color bar */
+  padding: 8px 4px 0;
+  border-radius: 6px;
+  opacity: .5;
+  filter: saturate(.6);
+  transition: opacity .35s, transform .35s, box-shadow .35s, filter .35s;
 }
 .seat.active {
-  opacity: 1; filter: none; transform: scale(1.12);
-  background: rgba(255, 240, 200, .12);
+  opacity: 1; filter: none;
+  transform: scale(1.1);
+  background: radial-gradient(80% 90% at 50% 20%,
+    rgba(233, 195, 152, .22) 0%, rgba(233, 195, 152, 0) 75%);
+  box-shadow: 0 0 34px rgba(233, 195, 152, .18);
 }
-.seat[data-vote="guilty"]     { border-bottom-color: #c0392b; }
-.seat[data-vote="not_guilty"] { border-bottom-color: #27ae60; }
-.seat[data-vote="undecided"],
-.seat[data-vote="unknown"]    { border-bottom-color: #7f8c8d; }
 
 .avatar {
-  width: 48px; height: 48px; margin: 0 auto 4px;
+  position: relative;
+  width: 52px; height: 52px;
+  margin: 0 auto 6px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  background:
+    radial-gradient(90% 90% at 35% 25%,
+      rgba(233, 195, 152, .3) 0%, rgba(233, 195, 152, 0) 60%),
+    var(--wall-deep);
+  border: 2px solid rgba(194, 162, 98, .5);
 }
-/* distinct placeholder color per seat */
-.seat:nth-child(1)  .avatar { background: #8e44ad; }
-.seat:nth-child(2)  .avatar { background: #2980b9; }
-.seat:nth-child(3)  .avatar { background: #c0392b; }
-.seat:nth-child(4)  .avatar { background: #16a085; }
-.seat:nth-child(5)  .avatar { background: #d35400; }
-.seat:nth-child(6)  .avatar { background: #7f8c8d; }
-.seat:nth-child(7)  .avatar { background: #f39c12; }
-.seat:nth-child(8)  .avatar { background: #2c3e50; }
-.seat:nth-child(9)  .avatar { background: #27ae60; }
-.seat:nth-child(10) .avatar { background: #a04000; }
-.seat:nth-child(11) .avatar { background: #1f618d; }
-.seat:nth-child(12) .avatar { background: #884ea0; }
+.seat.active .avatar { border-color: var(--tungsten); }
 
-.plate { font-size: .7rem; line-height: 1.2; }
+/* brass nameplate under each juror */
+.plate {
+  font-family: var(--sans);
+  font-size: .8rem;
+  line-height: 1.35;
+  letter-spacing: .5px;
+  color: var(--paper-dim);
+  padding: 3px 4px 4px;
+  border-top: 1px solid rgba(194, 162, 98, .4);
+}
+.seat.active .plate { color: var(--paper); }
 
+/* vote color: the plate rule turns into a ballot stripe */
+.seat[data-vote="guilty"]     .plate { border-top: 3px solid var(--guilty); }
+.seat[data-vote="not_guilty"] .plate { border-top: 3px solid var(--acquit); }
+.seat[data-vote="undecided"]  .plate { border-top: 3px solid var(--brass); }
+
+/* a mind may be changing since the last public ballot — hint only,
+   never reveals which way */
+.seat.reconsidering .plate { border-top-style: dashed; }
+.seat.reconsidering .avatar { animation: waver 1.6s ease-in-out infinite; }
+@keyframes waver {
+  0%, 100% { box-shadow: 0 0 0 rgba(233, 195, 152, 0); }
+  50%      { box-shadow: 0 0 10px rgba(233, 195, 152, .55); }
+}
+
+/* ballot is in during a live vote — value stays hidden until the tally */
+.seat.voted-in .avatar { border-color: var(--brass); opacity: .85; }
+.seat.voted-in .avatar::after {
+  content: "\2713";
+  position: absolute;
+  top: -4px; right: -4px;
+  font-size: .7rem;
+  color: var(--brass);
+}
+
+/* ---- dialogue: the spoken record ---- */
 #dialogue {
-  min-height: 100px; margin: 0 20px 6px;
-  background: rgba(10, 8, 5, .82);
-  border: 2px solid #b89b6a; border-radius: 10px;
-  padding: 12px 16px;
+  min-height: 108px;
+  margin: 0 24px 8px;
+  padding: 14px 20px;
+  background: linear-gradient(180deg,
+    rgba(12, 10, 8, .88) 0%, rgba(12, 10, 8, .8) 100%);
+  border: 1px solid rgba(194, 162, 98, .5);
+  border-left: 4px solid var(--brass);
+  border-radius: 4px;
   cursor: pointer;
   flex-shrink: 0;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .4);
 }
-#dialogue-name { color: #e8c87a; font-weight: bold; margin-bottom: 4px; }
-#dialogue-text { font-size: 1rem; line-height: 1.4; }
+#dialogue-name {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  letter-spacing: .5px;
+  color: var(--tungsten);
+  margin-bottom: 5px;
+}
+#dialogue-text {
+  font-size: 1.25rem;
+  line-height: 1.55;
+  color: var(--paper);
+}
 
+/* ---- controls ---- */
 #controls {
-  display: flex; gap: 14px; align-items: center;
-  padding: 4px 20px 10px;
-  font-family: sans-serif; font-size: .8rem;
+  display: flex; gap: 18px; align-items: center;
+  padding: 4px 24px 12px;
+  font-family: var(--sans);
+  font-size: .8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--paper-dim);
   flex-shrink: 0;
 }
 #controls button {
-  padding: 5px 18px; font-size: .95rem; cursor: pointer;
-  background: #b89b6a; border: none; border-radius: 6px;
+  font-family: var(--sans);
+  font-size: .88rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 7px 20px;
+  cursor: pointer;
+  color: var(--wall-deep);
+  background: linear-gradient(180deg, #d4b578 0%, var(--brass) 100%);
+  border: 1px solid #8a713f;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .45);
+  transition: transform .15s, box-shadow .15s;
+}
+#controls button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .5);
+}
+#controls button:disabled { opacity: .45; cursor: default; }
+#stop {
+  background: linear-gradient(180deg, #b96a5e 0%, var(--guilty) 100%);
+  border-color: #6e2b23;
+  color: var(--paper);
+}
+#controls button:focus-visible,
+#controls select:focus-visible,
+#dialogue:focus-visible,
+.panel-header:focus-visible {
+  outline: 2px solid var(--tungsten); outline-offset: 2px;
+}
+#controls input[type="range"] { accent-color: var(--brass); }
+#controls select {
+  font-family: var(--sans);
+  font-size: .78rem;
+  padding: 5px 8px;
+  color: var(--paper);
+  background: var(--wall-deep);
+  border: 1px solid rgba(194, 162, 98, .5);
+  border-radius: 3px;
 }
 
-/* ---- side panel ---- */
+/* ---- side panel: the court record ---- */
 #sidepanel {
   width: 340px;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  border-left: 2px solid #b89b6a;
-  background: rgba(0, 0, 0, .25);
+  display: flex; flex-direction: column;
+  border-left: 1px solid rgba(194, 162, 98, .35);
+  background: rgba(0, 0, 0, .3);
   overflow: hidden;
 }
-
 .panel-section {
-  border-bottom: 1px solid rgba(184, 155, 106, .3);
-  display: flex;
-  flex-direction: column;
+  border-bottom: 1px solid rgba(194, 162, 98, .22);
+  display: flex; flex-direction: column;
   min-height: 0;
 }
 .panel-header {
-  padding: 6px 12px;
-  font-size: .85rem;
-  font-weight: bold;
-  color: #e8c87a;
-  background: rgba(0,0,0,.2);
+  padding: 7px 14px;
+  font-family: var(--sans);
+  font-size: .82rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brass);
+  background: rgba(0, 0, 0, .25);
   cursor: pointer;
   user-select: none;
   flex-shrink: 0;
 }
-.panel-body {
-  overflow-y: auto;
-  padding: 6px 12px;
-  flex: 1;
-}
+.panel-body { overflow-y: auto; padding: 8px 14px; flex: 1; }
 .panel-label {
-  font-size: .75rem;
-  color: #b89b6a;
-  margin: 6px 0 2px;
+  font-family: var(--sans);
+  font-size: .72rem;
+  color: var(--paper-dim);
+  margin: 6px 0 3px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 
-#case-panel      { flex: 0 0 auto; max-height: 140px; }
+#case-panel { flex: 0 0 auto; max-height: 160px; }
 #case-panel.collapsed #case-body { display: none; }
 #prompt-panel    { flex: 1; }
 #reasoning-panel { flex: 1; }
 
-.trace-box {
-  font-family: 'Courier New', monospace;
-  font-size: .7rem;
-  line-height: 1.35;
+/* case file reads like a typed exhibit */
+#case-text {
+  font-family: var(--sans);
+  font-size: .84rem;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  background: rgba(0,0,0,.35);
-  border-radius: 4px;
-  padding: 6px;
+  max-height: 118px;
+  overflow-y: auto;
+  color: #d8cfbc;
+}
+
+.trace-box {
+  font-family: var(--mono);
+  font-size: .76rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, .4);
+  border: 1px solid rgba(194, 162, 98, .18);
+  border-radius: 3px;
+  padding: 7px;
   max-height: 180px;
   overflow-y: auto;
-  color: #d5d0c5;
+  color: #c6bfaf;
 }
 
-#case-text {
-  font-family: 'Courier New', monospace;
-  font-size: .7rem;
-  line-height: 1.3;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 100px;
-  overflow-y: auto;
-  color: #d5d0c5;
+/* subtle brass scrollbars */
+.panel-body::-webkit-scrollbar,
+.trace-box::-webkit-scrollbar,
+#case-text::-webkit-scrollbar { width: 8px; }
+.panel-body::-webkit-scrollbar-thumb,
+.trace-box::-webkit-scrollbar-thumb,
+#case-text::-webkit-scrollbar-thumb {
+  background: rgba(194, 162, 98, .35); border-radius: 4px;
 }
 
+/* ---- verdict: the stamp ---- */
 #verdict {
   position: fixed; inset: 0;
   display: none;
-  align-items: center; justify-content: center; flex-direction: column;
-  background: rgba(0, 0, 0, .88);
+  align-items: center; justify-content: center;
+  background: rgba(10, 12, 13, .92);
   text-align: center;
+  cursor: pointer;   /* click the backdrop (not the card) to dismiss */
 }
 #verdict.show { display: flex; }
-#verdict-text { font-size: 4rem; letter-spacing: 6px; color: #e8c87a; }
-#verdict-reason { margin-top: 16px; font-size: 1.1rem; max-width: 40em; }
+#verdict-card {
+  outline: none;
+  cursor: default;
+  padding: 42px 56px;
+  border: 1px solid rgba(194, 162, 98, .5);
+  border-radius: 4px;
+  background:
+    radial-gradient(100% 100% at 50% 0%,
+      rgba(233, 195, 152, .08) 0%, rgba(233, 195, 152, 0) 70%),
+    var(--wall-deep);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .7);
+  animation: stamp .5s cubic-bezier(.2, 1.4, .4, 1);
+}
+@keyframes stamp {
+  0%   { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+#verdict-eyebrow {
+  font-family: var(--sans);
+  font-size: .82rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  margin-bottom: 14px;
+}
+#verdict-text {
+  font-family: var(--display);
+  font-size: 4.2rem;
+  letter-spacing: 8px;
+  line-height: 1.05;
+  color: var(--tungsten);
+}
+#verdict[data-verdict="guilty"]     #verdict-text { color: #c96b60; }
+#verdict[data-verdict="not_guilty"] #verdict-text { color: #7ea98c; }
+#verdict-reason {
+  margin-top: 18px;
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--paper);
+  max-width: 36em;
+}
+
+/* ---- small screens: stack, allow scroll ---- */
+@media (max-width: 900px) {
+  html, body { overflow: auto; }
+  #stage { height: auto; min-height: 100%; }
+  #docket { flex-direction: column; align-items: flex-start; gap: 10px; }
+  #tally-wrap { text-align: left; }
+  #tally-bar, #tally-legend { justify-content: flex-start; }
+  #main { flex-direction: column; }
+  #seats { grid-template-columns: repeat(4, 1fr); }
+  #sidepanel { width: 100%; border-left: none;
+               border-top: 1px solid rgba(194, 162, 98, .35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

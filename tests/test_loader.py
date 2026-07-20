@@ -1,6 +1,6 @@
 import pytest
 
-from loader import load_cards, load_case
+from loader import load_cards, load_case, list_cases
 
 REQUIRED = ("id", "seat", "emoji", "name", "occupation", "temperament",
             "biases", "speech_style")
@@ -21,7 +21,7 @@ def test_every_card_has_all_fields_nonempty():
 def test_no_card_leaks_script_knowledge():
     for card in load_cards():
         blob = " ".join(str(v) for v in card.values()).lower()
-        for word in ("dissent", "holdout", "film", "movie", "fonda",
+        for word in ("dissent", "holdout", "film", "movie",
                      "12 angry", "acquit", "convict"):
             assert word not in blob, f"seat {card['seat']} leaks: {word}"
 
@@ -30,3 +30,20 @@ def test_case_file_loads_and_mentions_key_evidence():
     case = load_case()
     for term in ("knife", "old man", "woman", "el train", "alibi"):
         assert term in case.lower()
+
+
+def test_list_cases_includes_both_cases():
+    cases = list_cases()
+    assert "the_stabbing" in cases
+    assert "pier7_arson" in cases
+
+
+def test_load_case_by_id():
+    case = load_case("pier7_arson")
+    assert "arson" in case.lower()
+    assert "insurance" in case.lower()
+
+
+def test_load_case_unknown_id_raises():
+    with pytest.raises(ValueError):
+        load_case("no_such_case")

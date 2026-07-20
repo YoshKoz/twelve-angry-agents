@@ -1,15 +1,48 @@
-"""Stateless wrapper around `claude -p`. One call = one agent turn.
+"""Stateless wrapper around Ollama API on the Windows desktop.
 
-NEVER use the Anthropic SDK or an API key here — user is on Claude Max,
-all LLM calls go through the claude CLI subprocess.
+One call = one agent turn.
+
+Uses the Windows desktop's Ollama instance over the LAN.
+
+Override with environment variables:
+    OLLAMA_HOST=http://192.168.178.98:11434
+    OLLAMA_MODEL=qwen3:latest
 """
 
 import json
-import subprocess
+import os
+
+import httpx
+
+# Windows desktop Ollama endpoint
+OLLAMA_BASE = os.environ.get(
+    "OLLAMA_HOST",
+    "http://192.168.178.98:11434",
+)
+
+# qwen3:latest (thinking-capable) on desktop Ollama — this Ollama instance
+# serializes requests (no real concurrency), so a fast reasoning model keeps
+# per-call latency low (~5s warm). A full 12-juror ballot runs 12 calls
+# back-to-back, so slower models (14B/35B at 20-25s each) push a single
+# ballot past the 90s cap and stall the vote. Keeps judgment quality while
+# letting ballots actually converge.
+OLLAMA_MODEL = os.environ.get(
+    "OLLAMA_MODEL",
+    "qwen3:latest",
+)
+
+# Shared HTTP client with connection pooling for concurrent jurors
+_CLIENT = httpx.Client(
+    timeout=httpx.Timeout(180.0, connect=10.0),
+    limits=httpx.Limits(
+        max_connections=20,
+        max_keepalive_connections=10,
+    ),
+)
 
 
 class AgentError(Exception):
-    """claude -p failed after retries."""
+    """Ollama call failed after retries."""
 
 
 class MalformedReply(AgentError):
@@ -17,63 +50,156 @@ class MalformedReply(AgentError):
 
 
 def ask(system_prompt, user_prompt, timeout=120):
-    """Spawn `claude -p`, return stripped stdout. Retries once on failure."""
-    cmd = ["claude", "-p", user_prompt, "--system-prompt", system_prompt]
+    """Call Ollama API and return message content."""
+
     last_err = None
+
     for attempt in range(2):
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True,
-                                  timeout=timeout)
-        except subprocess.TimeoutExpired:
-            last_err = f"claude -p timed out after {timeout}s"
-            continue
-        if proc.returncode == 0:
-            return proc.stdout.strip()
-        last_err = f"claude -p exit {proc.returncode}: {proc.stderr.strip()}"
+            resp = _CLIENT.post(
+                f"{OLLAMA_BASE}/api/chat",
+                json={
+                    "model":
+                    OLLAMA_MODEL,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": system_prompt,
+                        },
+                        {
+                            "role": "user",
+                            "content": user_prompt,
+                        },
+                    ],
+                    "format":
+                    "json",
+                    # qwen3 reasons through a hidden <think> trace before
+                    # replying — slower (~10x) but noticeably better
+                    # judgment than a bare JSON answer.
+                    "think":
+                    True,
+                    "options": {
+                        "temperature": 0.7,
+                        "num_ctx": 8192,
+                        "num_batch": 512,
+                        "num_gpu": -1,
+                    },
+                    "stream":
+                    False,
+                },
+                timeout=timeout,
+            )
+
+            resp.raise_for_status()
+
+            data = resp.json()
+            return data["message"]["content"].strip()
+
+        except httpx.TimeoutException:
+            last_err = (f"Ollama timed out after {timeout}s "
+                        f"(attempt {attempt + 1}/2)")
+
+        except httpx.HTTPError as e:
+            last_err = f"Ollama request failed: {e}"
+
+        except (KeyError, json.JSONDecodeError) as e:
+            last_err = f"Ollama bad response: {e}"
+
     raise AgentError(last_err)
 
 
 def _extract_json(text):
-    """Best-effort: parse the outermost {...} block. Returns dict or None."""
+    """Extract the outermost JSON object from model output."""
+
     start = text.find("{")
     end = text.rfind("}")
+
     if start == -1 or end <= start:
         return None
+
     try:
         obj = json.loads(text[start:end + 1])
     except json.JSONDecodeError:
         return None
+
     return obj if isinstance(obj, dict) else None
 
 
-def ask_json(system_prompt, user_prompt, required_keys, timeout=120, retries=3):
-    """ask(), then parse + validate JSON. Retries with a schema reminder."""
-    schema_hint = json.dumps({k: "..." for k in required_keys})
+def ask_json(
+    system_prompt,
+    user_prompt,
+    required_keys,
+    timeout=120,
+    retries=3,
+):
+    """Call agent and validate JSON response."""
+
+    schema_hint = json.dumps({key: "..." for key in required_keys})
+
     prompt = user_prompt
+
     for _ in range(retries):
-        text = ask(system_prompt, prompt, timeout=timeout)
+        text = ask(
+            system_prompt,
+            prompt,
+            timeout=timeout,
+        )
+
         obj = _extract_json(text)
-        if obj is not None and all(k in obj for k in required_keys):
+
+        if obj is not None and all(key in obj for key in required_keys):
             return obj
-        prompt = (user_prompt
-                  + "\n\nReturn ONLY valid JSON matching this schema, "
-                  + "no prose: " + schema_hint)
-    raise MalformedReply(
-        f"no valid JSON with keys {required_keys} after {retries} attempts")
+
+        prompt = (user_prompt +
+                  "\n\nReturn ONLY valid JSON matching this schema." +
+                  " No prose: " + schema_hint)
+
+    raise MalformedReply(f"no valid JSON with keys {required_keys} "
+                         f"after {retries} attempts")
 
 
-def ask_json_detailed(system_prompt, user_prompt, required_keys,
-                      timeout=120, retries=3):
-    """Like ask_json, but returns (parsed, raw_text, system_prompt, user_prompt_used)."""
-    schema_hint = json.dumps({k: "..." for k in required_keys})
+def ask_json_detailed(
+    system_prompt,
+    user_prompt,
+    required_keys,
+    timeout=120,
+    retries=3,
+):
+    """
+    Like ask_json, but returns:
+
+    (
+        parsed_json,
+        raw_text,
+        system_prompt,
+        user_prompt_used
+    )
+    """
+
+    schema_hint = json.dumps({key: "..." for key in required_keys})
+
     prompt = user_prompt
+
     for _ in range(retries):
-        text = ask(system_prompt, prompt, timeout=timeout)
+        text = ask(
+            system_prompt,
+            prompt,
+            timeout=timeout,
+        )
+
         obj = _extract_json(text)
-        if obj is not None and all(k in obj for k in required_keys):
-            return (obj, text, system_prompt, prompt)
-        prompt = (user_prompt
-                  + "\n\nReturn ONLY valid JSON matching this schema, "
-                  + "no prose: " + schema_hint)
-    raise MalformedReply(
-        f"no valid JSON with keys {required_keys} after {retries} attempts")
+
+        if obj is not None and all(key in obj for key in required_keys):
+            return (
+                obj,
+                text,
+                system_prompt,
+                prompt,
+            )
+
+        prompt = (user_prompt +
+                  "\n\nReturn ONLY valid JSON matching this schema." +
+                  " No prose: " + schema_hint)
+
+    raise MalformedReply(f"no valid JSON with keys {required_keys} "
+                         f"after {retries} attempts")

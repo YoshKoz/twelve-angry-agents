@@ -3,31 +3,62 @@
 <head>
 <meta charset="utf-8">
 <title>Twelve Angry Agents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="room.css">
 </head>
 <body>
 <div id="stage">
-  <div id="tally">GUILTY 0 — NOT GUILTY 0</div>
+  <header id="docket">
+    <div id="docket-title">
+      <span id="docket-case">The State v. the Defendant</span>
+      <h1>Twelve Angry Agents</h1>
+    </div>
+    <div id="tally-wrap">
+      <div id="tally" aria-live="polite">GUILTY 0 — NOT GUILTY 0</div>
+      <div id="tally-bar" aria-hidden="true">
+        <span class="seg seg-open"></span><span class="seg seg-open"></span>
+        <span class="seg seg-open"></span><span class="seg seg-open"></span>
+        <span class="seg seg-open"></span><span class="seg seg-open"></span>
+        <span class="seg seg-open"></span><span class="seg seg-open"></span>
+        <span class="seg seg-open"></span><span class="seg seg-open"></span>
+        <span class="seg seg-open"></span><span class="seg seg-open"></span>
+      </div>
+      <div id="tally-legend">
+        <span class="legend-guilty">guilty</span>
+        <span class="legend-open">undecided</span>
+        <span class="legend-acquit">not guilty</span>
+      </div>
+    </div>
+  </header>
   <div id="main">
     <div id="left">
       <div id="seats"></div>
-      <div id="dialogue">
+      <div id="dialogue" role="log" aria-live="polite">
         <div id="dialogue-name"></div>
-        <div id="dialogue-text">Press Start to begin deliberation…</div>
+        <div id="dialogue-text">Press Begin Deliberation to start…</div>
       </div>
       <div id="controls">
-        <button id="start">Start</button>
+        <label id="case-label">Case
+          <select id="case-select"></select>
+        </label>
+        <button id="start">Begin deliberation</button>
+        <button id="stop" disabled>Stop</button>
         <label>Speed
           <input id="speed" type="range" min="5" max="80" value="25">
         </label>
-        <label id="replay-label">Replay
+        <label id="replay-label">Replay transcript
           <input id="replay" type="file" accept=".json">
+        </label>
+        <label id="transcript-label">Past deliberations
+          <select id="transcript-select"><option value="">— pick one —</option></select>
         </label>
       </div>
     </div>
     <div id="sidepanel">
       <div id="case-panel" class="panel-section">
-        <div class="panel-header" id="case-toggle">&#9660; Case File</div>
+        <div class="panel-header" id="case-toggle">Case file — Exhibit A</div>
         <div id="case-body" class="panel-body">
           <pre id="case-text"></pre>
         </div>
@@ -42,7 +73,7 @@
         </div>
       </div>
       <div id="reasoning-panel" class="panel-section">
-        <div class="panel-header">Raw Output</div>
+        <div class="panel-header">Raw output</div>
         <div class="panel-body">
           <pre id="reasoning-text" class="trace-box"></pre>
         </div>
@@ -50,8 +81,12 @@
     </div>
   </div>
   <div id="verdict">
-    <div id="verdict-text"></div>
-    <div id="verdict-reason"></div>
+    <div id="verdict-card" role="dialog" aria-modal="true"
+         aria-labelledby="verdict-text" tabindex="-1">
+      <div id="verdict-eyebrow">The jury finds the defendant</div>
+      <div id="verdict-text"></div>
+      <div id="verdict-reason"></div>
+    </div>
   </div>
 </div>
 <script type="module" src="room.js"></script>

@@ -6,6 +6,8 @@ from pathlib import Path
 REQUIRED_FIELDS = ("id", "seat", "emoji", "name", "occupation", "temperament",
                    "biases", "speech_style")
 
+DEFAULT_CASE = "the_stabbing"
+
 
 def load_cards(path="data/jurors"):
     cards = []
@@ -23,5 +25,14 @@ def load_cards(path="data/jurors"):
     return cards
 
 
-def load_case(path="data/case_file.md"):
-    return Path(path).read_text()
+def list_cases(cases_dir="data/cases"):
+    """Return available case ids, sorted."""
+    return sorted(p.stem for p in Path(cases_dir).glob("*.md"))
+
+
+def load_case(case_id=None, cases_dir="data/cases"):
+    """Load a case file's text by id (filename without .md)."""
+    path = Path(cases_dir) / f"{case_id or DEFAULT_CASE}.md"
+    if not path.exists():
+        raise ValueError(f"unknown case {case_id!r}")
+    return path.read_text()

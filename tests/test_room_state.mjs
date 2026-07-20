@@ -38,6 +38,17 @@ test("vote_called sets voting, vote_result clears it", () => {
   assert.equal(s.voting, false);
 });
 
+test("straw-poll ballot marks state non-binding, real ballot binding", () => {
+  let s = applyEvent(initialState(), { type: "vote_called", binding: false });
+  assert.equal(s.binding, false);
+  s = applyEvent(s, { type: "vote_result", votes: {},
+                      tally: { guilty: 0, not_guilty: 0, undecided: 0 },
+                      binding: false });
+  assert.equal(s.binding, false);
+  s = applyEvent(s, { type: "vote_called", binding: true });
+  assert.equal(s.binding, true);
+});
+
 test("unknown event type throws", () => {
   assert.throws(() => applyEvent(initialState(), { type: "nonsense" }));
 });
@@ -77,4 +88,33 @@ test("reasoning event stored", () => {
   assert.equal(s.reasoning.seat, 8);
   assert.equal(s.reasoning.raw, '{"v":"g"}');
   assert.equal(s.reasoning.mode, "vote");
+});
+
+test("speech sets reconsidering per seat, vote_result clears it", () => {
+  let s = applyEvent(initialState(), {
+    type: "speech", seat: 8, name: "Davis", speech: "hmm", reconsidering: true,
+  });
+  assert.equal(s.reconsidering[8], true);
+  s = applyEvent(s, {
+    type: "speech", seat: 3, name: "Cobb", speech: "no", reconsidering: false,
+  });
+  assert.equal(s.reconsidering[8], true);   // seat 8's flag persists
+  assert.equal(s.reconsidering[3], false);
+  s = applyEvent(s, { type: "vote_result", votes: {},
+                      tally: { guilty: 0, not_guilty: 0, undecided: 0 } });
+  assert.deepEqual(s.reconsidering, {});
+});
+
+test("voter_done tracks per-seat progress, clears on vote_result and next vote_called", () => {
+  let s = applyEvent(initialState(), { type: "vote_called" });
+  s = applyEvent(s, { type: "voter_done", seat: 3 });
+  s = applyEvent(s, { type: "voter_done", seat: 8 });
+  assert.equal(s.votedIn[3], true);
+  assert.equal(s.votedIn[8], true);
+  assert.equal(s.votedIn[1], undefined);
+  s = applyEvent(s, { type: "vote_result", votes: {},
+                      tally: { guilty: 0, not_guilty: 0, undecided: 0 } });
+  assert.deepEqual(s.votedIn, {});
+  s = applyEvent(s, { type: "vote_called" });
+  assert.deepEqual(s.votedIn, {});
 });

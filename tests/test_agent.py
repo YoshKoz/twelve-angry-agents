@@ -1,62 +1,72 @@
-import subprocess
 from unittest.mock import patch, MagicMock
 
+import httpx
 import pytest
 
 import agent
 
 
-def ok(stdout):
-    m = MagicMock()
-    m.returncode = 0
-    m.stdout = stdout
-    m.stderr = ""
+def _ok_response(content):
+    """Build a mock httpx.Response that returns JSON with the given message content."""
+    m = MagicMock(spec=httpx.Response)
+    m.raise_for_status = MagicMock()
+    m.json = MagicMock(return_value={"message": {"content": content}})
     return m
 
 
-def fail(stderr="boom", code=1):
-    m = MagicMock()
-    m.returncode = code
-    m.stdout = ""
-    m.stderr = stderr
+def _fail_response():
+    """Build a mock httpx.Response whose raise_for_status raises HTTPStatusError."""
+    m = MagicMock(spec=httpx.Response)
+    m.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError("fail", request=MagicMock(), response=MagicMock()))
     return m
 
 
-def test_ask_builds_claude_p_command():
-    with patch("agent.subprocess.run", return_value=ok("hello")) as run:
-        out = agent.ask("SYS", "USER")
-    assert out == "hello"
-    cmd = run.call_args[0][0]
-    assert cmd[0] == "claude"
-    assert "-p" in cmd
-    assert "USER" in cmd
-    assert "--system-prompt" in cmd
-    assert cmd[cmd.index("--system-prompt") + 1] == "SYS"
+def test_ask_returns_stripped_content():
+    with patch.object(agent._CLIENT, "post", return_value=_ok_response("hello")):
+        assert agent.ask("SYS", "USER") == "hello"
 
 
 def test_ask_strips_output():
-    with patch("agent.subprocess.run", return_value=ok("  text \n")):
+    with patch.object(agent._CLIENT, "post", return_value=_ok_response("  text \n")):
         assert agent.ask("s", "u") == "text"
 
 
-def test_ask_retries_once_on_nonzero_exit_then_succeeds():
-    with patch("agent.subprocess.run", side_effect=[fail(), ok("second")]) as run:
+def test_ask_posts_correct_url_and_body():
+    with patch.object(agent._CLIENT, "post", return_value=_ok_response("out")) as mock_post:
+        agent.ask("SYS", "USER")
+    mock_post.assert_called_once()
+    url = mock_post.call_args[0][0]
+    assert url.endswith("/api/chat")
+    body = mock_post.call_args[1]["json"]
+    assert body["model"] == agent.OLLAMA_MODEL
+    assert body["format"] == "json"
+    assert body["think"] is True
+    assert body["messages"] == [
+        {"role": "system", "content": "SYS"},
+        {"role": "user", "content": "USER"},
+    ]
+
+
+def test_ask_retries_once_on_http_error_then_succeeds():
+    with patch.object(agent._CLIENT, "post", side_effect=[_fail_response(), _ok_response("second")]) as mock_post:
         assert agent.ask("s", "u") == "second"
-    assert run.call_count == 2
+    assert mock_post.call_count == 2
 
 
-def test_ask_raises_after_two_failures_with_stderr():
-    with patch("agent.subprocess.run", side_effect=[fail("err msg"), fail("err msg")]):
-        with pytest.raises(agent.AgentError, match="err msg"):
+def test_ask_raises_after_two_failures():
+    with patch.object(agent._CLIENT, "post", return_value=_fail_response()):
+        with pytest.raises(agent.AgentError):
             agent.ask("s", "u")
 
 
 def test_ask_retries_once_on_timeout_then_raises():
-    exc = subprocess.TimeoutExpired(cmd="claude", timeout=5)
-    with patch("agent.subprocess.run", side_effect=[exc, exc]) as run:
+    def _timeout(*_args, **_kwargs):
+        raise httpx.TimeoutException("timed out")
+    with patch.object(agent._CLIENT, "post", side_effect=_timeout) as mock_post:
         with pytest.raises(agent.AgentError, match="timed out"):
             agent.ask("s", "u", timeout=5)
-    assert run.call_count == 2
+    assert mock_post.call_count == 2
 
 
 def test_ask_json_parses_clean_json():

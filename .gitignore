@@ -5,3 +5,5 @@ transcripts/*.json
 __pycache__/
 transcripts/
 .pytest_cache/
+.cache/
+~/

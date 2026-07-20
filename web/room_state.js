@@ -7,8 +7,11 @@ export function initialState() {
     activeSeat: null,  // seat currently lit
     dialogue: null,    // {seat, name, speech} last spoken
     votes: {},         // seat -> "guilty"|"not_guilty"|"undecided"
+    reconsidering: {}, // seat -> true if lean now conflicts with last public vote
     tally: null,       // {guilty, not_guilty, undecided}
     voting: false,     // between vote_called and vote_result
+    binding: true,     // false while the current/last ballot is a straw poll
+    votedIn: {},       // seat -> true once their ballot is in (value hidden)
     verdict: null,     // {verdict, reason}
     error: null,
     caseText: null,    // case file text
@@ -31,14 +34,23 @@ export function applyEvent(state, ev) {
       break;
     case "speech":
       s.dialogue = { seat: ev.seat, name: ev.name, speech: ev.speech };
+      s.reconsidering = { ...state.reconsidering, [ev.seat]: !!ev.reconsidering };
       break;
     case "vote_called":
       s.voting = true;
+      s.binding = ev.binding !== false;   // default binding unless told otherwise
+      s.votedIn = {};
+      break;
+    case "voter_done":
+      s.votedIn = { ...state.votedIn, [ev.seat]: true };
       break;
     case "vote_result":
       s.votes = ev.votes;
       s.tally = ev.tally;
+      s.binding = ev.binding !== false;
       s.voting = false;
+      s.votedIn = {};
+      s.reconsidering = {};   // fresh ballot supersedes any pre-vote hints
       break;
     case "verdict":
       s.verdict = { verdict: ev.verdict, reason: ev.reason };
