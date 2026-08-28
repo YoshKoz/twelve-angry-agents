@@ -1,0 +1,42 @@
+{
+  "title": "The State v. the Defendant",
+  "charge": "Arson in the first degree. A guilty verdict carries a mandatory sentence of twenty-five years.",
+  "exhibits": [
+    {
+      "id": "the_insurance",
+      "name": "The insurance increase",
+      "prosecution_claim": "He raised the payout from $400,000 to $1.1 million six weeks before the fire, with the business months from insolvency. That is the motive.",
+      "record": "The policy was increased six weeks earlier and the defendant signed the paperwork himself. The business had lost its three largest contracts and was months from insolvency. The defendant says the broker recommended the increase after a stock audit, and has the broker's letter dated two months before he acted on it. Company records show the payout would have gone to the business, in which he holds no ownership stake — only a salaried position."
+    },
+    {
+      "id": "the_access_log",
+      "name": "The key card and the access log",
+      "prosecution_claim": "His personal, non-transferable card opened the building at 2:15 a.m. and closed it at 2:51 a.m., bracketing the fire.",
+      "record": "The log shows entry at 2:15 a.m. and exit at 2:51 a.m. The locksmith confirmed cards are personal and non-transferable, but admitted a card can be cloned in under two minutes with commercially available equipment, and that the company never audited who had access to the programming terminal. The defendant says he went in to retrieve a signed contract from his desk."
+    },
+    {
+      "id": "the_accelerant",
+      "name": "The pour pattern and the gasoline trace",
+      "prosecution_claim": "Investigators found an accelerant pour pattern on the office floor and lab tests confirmed gasoline residue on surviving carpet.",
+      "record": "The fire marshal testified to the pour pattern and said burn char depth put the origin at floor level near the desk rather than an electrical fault, but conceded that faulty wiring in that section had been flagged eight months earlier and never fully repaired. No accelerant container, gas can, or purchase record was ever recovered or traced to the defendant."
+    },
+    {
+      "id": "the_wiring",
+      "name": "The flagged wiring",
+      "prosecution_claim": "The fire started at floor level by the desk, not in the walls; the wiring is a defence distraction.",
+      "record": "An electrician who had done prior work in the building testified the flagged wiring near the office was original to a 1980s renovation and showed insulation breakdown consistent with a slow electrical fire, though he had not inspected it in the weeks before the blaze. The prosecution highlighted that he was paid as an expert witness by the defence."
+    },
+    {
+      "id": "the_truck",
+      "name": "The dockhand and the two-tone truck",
+      "prosecution_claim": "A witness places his distinctive truck around the corner from the entrance at 2:20 a.m.",
+      "record": "The night-shift dockhand saw the truck parked around the corner at about 2:20 a.m., 'same as always when he came in on a weekend to catch up on paperwork.' He did not see the defendant enter or leave. The defendant says the main lot was being resurfaced that week, which the site foreman corroborates."
+    },
+    {
+      "id": "the_investigator",
+      "name": "The insurance investigator's opinion",
+      "prosecution_claim": "In eleven years he had never seen a larger red flag, and the fire had 'every hallmark of a deliberate loss.'",
+      "record": "The investigator gave that opinion on the stand. He conceded he had recommended denying claims in fires he later admitted, under further questioning, were accidental."
+    }
+  ]
+}

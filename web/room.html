@@ -14,6 +14,7 @@
     <div id="docket-title">
       <span id="docket-case">The State v. the Defendant</span>
       <h1>Twelve Angry Agents</h1>
+      <span id="docket-charge"></span>
     </div>
     <div id="tally-wrap">
       <div id="tally" aria-live="polite">GUILTY 0 — NOT GUILTY 0</div>
@@ -28,13 +29,33 @@
       <div id="tally-legend">
         <span class="legend-guilty">guilty</span>
         <span class="legend-open">undecided</span>
+        <span class="legend-abstain">abstain</span>
         <span class="legend-acquit">not guilty</span>
       </div>
+      <div id="ballot-note" aria-live="polite"></div>
     </div>
   </header>
   <div id="main">
     <div id="left">
       <div id="seats"></div>
+      <div id="floor" aria-live="polite">
+        <div id="switch-note"></div>
+        <div id="requests">
+          <div class="floor-label">On the table</div>
+          <ul id="request-list"></ul>
+        </div>
+        <div id="ruling">
+          <span id="ruling-verb"></span>
+          <span id="ruling-request"></span>
+          <span id="ruling-reason"></span>
+        </div>
+        <div id="record">
+          <div id="record-head"></div>
+          <div id="record-text"></div>
+        </div>
+        <div id="announced"></div>
+        <div id="judge"></div>
+      </div>
       <div id="dialogue" role="log" aria-live="polite">
         <div id="dialogue-name"></div>
         <div id="dialogue-text">Press Begin Deliberation to start…</div>
@@ -45,9 +66,14 @@
         </label>
         <button id="start">Begin deliberation</button>
         <button id="stop" disabled>Stop</button>
-        <label>Speed
-          <input id="speed" type="range" min="5" max="80" value="25">
+        <label id="speed-label"
+               title="Animation only. The jurors are language models and think at their own pace — this cannot make them faster.">
+          Playback
+          <input id="speed" type="range" min="0" max="6" step="1" value="2"
+                 aria-describedby="speed-note">
+          <span id="speed-value">Normal</span>
         </label>
+        <span id="speed-note">typing &amp; pauses only — not the agents</span>
         <label id="replay-label">Replay transcript
           <input id="replay" type="file" accept=".json">
         </label>
@@ -57,24 +83,61 @@
       </div>
     </div>
     <div id="sidepanel">
-      <div id="case-panel" class="panel-section">
-        <div class="panel-header" id="case-toggle">Case file — Exhibit A</div>
+
+      <!-- The position board: every juror's INDEPENDENT read of every
+           exhibit, formed before anyone spoke, next to what the film
+           concluded about the same exhibit. -->
+      <div id="board-panel" class="panel-section">
+        <div class="panel-header" id="board-header">The board — where each juror stood</div>
+        <div class="panel-body">
+          <p class="panel-note">
+            One row per exhibit, one square per juror — each juror's own read,
+            made privately before a word was spoken. Click a row for the
+            reasons, the room's finding, and what the film concluded.
+          </p>
+          <div id="exhibit-now">
+            <div id="exhibit-now-head"></div>
+            <div id="exhibit-now-name"></div>
+            <div id="exhibit-now-claim"></div>
+            <div id="exhibit-now-progress"></div>
+          </div>
+          <div id="board"></div>
+          <div id="board-legend">
+            <span class="key" data-pos="supports_guilt">supports guilt</span>
+            <span class="key" data-pos="raises_doubt">raises doubt</span>
+            <span class="key" data-pos="inconclusive">inconclusive</span>
+            <span class="key" data-pos="pending">not read yet</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="case-panel" class="panel-section collapsed">
+        <div class="panel-header" id="case-toggle">Case file — the record</div>
         <div id="case-body" class="panel-body">
           <pre id="case-text"></pre>
         </div>
       </div>
-      <div id="prompt-panel" class="panel-section">
-        <div class="panel-header">Prompt</div>
-        <div class="panel-body">
-          <div class="panel-label">System</div>
-          <pre id="prompt-system" class="trace-box"></pre>
-          <div class="panel-label">User</div>
-          <pre id="prompt-user" class="trace-box"></pre>
+
+      <!-- The raw machinery. Collapsed by default: the board above is the
+           reasoning view, this is the actual text on the wire. -->
+      <div id="trace-panel" class="panel-section collapsed">
+        <div class="panel-header" id="trace-toggle" role="button" tabindex="0"
+             aria-expanded="false" aria-controls="trace-body">
+          <span id="trace-toggle-text">Show the raw model prompts</span>
         </div>
-      </div>
-      <div id="reasoning-panel" class="panel-section">
-        <div class="panel-header">Raw output</div>
-        <div class="panel-body">
+        <div id="trace-body" class="panel-body">
+          <p class="panel-note">
+            The literal text exchanged with the language model on the last
+            agent call<span id="trace-who"></span>.
+          </p>
+          <div class="panel-label">System prompt</div>
+          <div class="panel-hint">who this juror was told to be, and the rules of the room</div>
+          <pre id="prompt-system" class="trace-box"></pre>
+          <div class="panel-label">User prompt</div>
+          <div class="panel-hint">the case, the record so far, and the question put to them this turn</div>
+          <pre id="prompt-user" class="trace-box"></pre>
+          <div class="panel-label">Raw output</div>
+          <div class="panel-hint">exactly what the model replied, before we parsed it</div>
           <pre id="reasoning-text" class="trace-box"></pre>
         </div>
       </div>

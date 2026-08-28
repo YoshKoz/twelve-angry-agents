@@ -1,52 +1,101 @@
-"""Glue: injected-callable signatures -> real LLM calls."""
+"""Glue: injected-callable signatures -> real LLM calls.
+
+Five roles, all of them agents: twelve jurors (who both assess exhibits and
+argue about them), the foreman who runs the room, the court officer who
+answers from the record, and the judge who takes the verdict or refuses it.
+"""
+
+import logging
 
 import agent
 import prompts
 import tts
-import logging
 
 log = logging.getLogger(__name__)
 
-# A stuck/garbage-outputting backend should surface as a failure quickly —
-# ask_json_detailed's own defaults (120s x 3 retries) can stall one call for
-# 6 minutes, and FAIL_CAP failures in a row for ~30 minutes before the
-# orchestrator aborts. These caps keep that bounded to a few minutes.
-# Reasoning mode (agent.py's think:True) makes single calls legitimately
-# slower (~10-20s typical), so the timeout allows more headroom than the
-# non-reasoning setup did.
-TIMEOUT = 90
+# A stuck backend should surface as a failure quickly. Assessments are short
+# and run twelve-wide, so they get a tighter budget than a speaking turn.
+TIMEOUT = 120
+ASSESS_TIMEOUT = 90
 RETRIES = 2
 
 
-def live_juror_fn(card, case_text, transcript, mode, last_tally=None):
+def _trace(parsed, raw, sys_p, user_p):
+    parsed["_prompt"] = {"system": sys_p, "user": user_p}
+    parsed["_raw_output"] = raw
+    return parsed
+
+
+def live_assess_fn(card, case, exhibit, findings=None):
+    """One juror's independent read of one exhibit. Twelve of these run
+    concurrently, which is what makes a docket affordable."""
+    return _trace(*agent.ask_json_detailed(
+        prompts.juror_system_prompt(card),
+        prompts.juror_assess_prompt(case, exhibit, findings),
+        ["position", "reasoning"],
+        timeout=ASSESS_TIMEOUT, retries=RETRIES,
+        model=agent.model_for("juror")))
+
+
+def live_juror_fn(card, case, transcript, mode, last_tally=None,
+                  floor_note=None, vote_method=None, exhibit=None,
+                  findings=None):
     system = prompts.juror_system_prompt(card)
+    model = agent.model_for("juror")
     if mode == "speak":
-        parsed, raw, sys_p, user_p = agent.ask_json_detailed(
+        parsed = _trace(*agent.ask_json_detailed(
             system,
-            prompts.juror_speak_prompt(case_text, transcript, card["seat"],
-                                       last_tally),
-            ["speech", "lean", "confidence"],
-            timeout=TIMEOUT, retries=RETRIES)
-        parsed["_prompt"] = {"system": sys_p, "user": user_p}
-        parsed["_raw_output"] = raw
+            prompts.juror_speak_prompt(case, transcript, card["seat"],
+                                       last_tally, floor_note, exhibit,
+                                       findings),
+            ["speech", "lean"],
+            timeout=TIMEOUT, retries=RETRIES, model=model))
         try:
             parsed["audio"] = tts.generate(parsed["speech"], card["seat"])
         except Exception as e:
             log.warning("TTS failed for seat %s: %s", card["seat"], e)
         return parsed
-    parsed, raw, sys_p, user_p = agent.ask_json_detailed(
-        system, prompts.juror_vote_prompt(case_text, transcript, last_tally),
-        ["reasoning", "vote"], timeout=TIMEOUT, retries=RETRIES)
-    parsed["_prompt"] = {"system": sys_p, "user": user_p}
-    parsed["_raw_output"] = raw
-    return parsed
+    return _trace(*agent.ask_json_detailed(
+        system,
+        prompts.juror_vote_prompt(case, transcript, last_tally,
+                                  vote_method or "hands", findings),
+        ["reasoning", "vote"],
+        timeout=TIMEOUT, retries=RETRIES, model=model))
 
 
-def live_foreman_fn(transcript, last_tally, turn, turn_cap):
-    parsed, raw, sys_p, user_p = agent.ask_json_detailed(
+def live_foreman_fn(case, transcript, last_tally, turn, turn_cap,
+                    pending=None, speech_counts=None, judge_note=None,
+                    exhibit=None, findings=None, exhibit_turns=0,
+                    remaining=0):
+    return _trace(*agent.ask_json_detailed(
         prompts.foreman_system_prompt(),
-        prompts.foreman_prompt(transcript, last_tally, turn, turn_cap),
-        ["action"], timeout=TIMEOUT, retries=RETRIES)
-    parsed["_prompt"] = {"system": sys_p, "user": user_p}
-    parsed["_raw_output"] = raw
-    return parsed
+        prompts.foreman_prompt(case, transcript, last_tally, turn, turn_cap,
+                               pending, speech_counts, judge_note, exhibit,
+                               findings, exhibit_turns, remaining),
+        ["action"],
+        timeout=TIMEOUT, retries=RETRIES, model=agent.model_for("foreman")))
+
+
+def live_bailiff_fn(kind, request, seat, case, transcript):
+    """kind is "evidence" (send out for an exhibit) or "experiment" (the room
+    tests something and reports what it observes)."""
+    system = prompts.bailiff_system_prompt()
+    model = agent.model_for("bailiff")
+    if kind == "evidence":
+        user = prompts.bailiff_evidence_prompt(
+            case, request.get("item", ""), seat)
+        keys = ["granted", "record"]
+    else:
+        user = prompts.bailiff_experiment_prompt(
+            case, request.get("description", ""), seat, transcript)
+        keys = ["possible", "result"]
+    return _trace(*agent.ask_json_detailed(
+        system, user, keys, timeout=TIMEOUT, retries=RETRIES, model=model))
+
+
+def live_judge_fn(verdict, reason, last_tally, turn, transcript):
+    return _trace(*agent.ask_json_detailed(
+        prompts.judge_system_prompt(),
+        prompts.judge_prompt(verdict, reason, last_tally, turn, transcript),
+        ["accept"],
+        timeout=TIMEOUT, retries=RETRIES, model=agent.model_for("judge")))

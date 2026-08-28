@@ -11,6 +11,7 @@
   --brass:     #c2a262;   /* nameplate brass */
   --guilty:    #a63d33;   /* dried brick red */
   --acquit:    #587f63;   /* billiard green */
+  --abstain:   #7a7466;   /* blank slip grey */
 
   --display: "DM Serif Display", Georgia, serif;
   --body:    "Crimson Pro", Georgia, serif;
@@ -55,6 +56,14 @@ body { font-family: var(--body); color: var(--paper); }
   color: var(--tungsten);
   line-height: 1.15;
 }
+#docket-charge {
+  display: block;
+  font-family: var(--body);
+  font-size: .88rem;
+  font-style: italic;
+  color: var(--paper-dim);
+  max-width: 44em;
+}
 
 #tally-wrap { text-align: right; min-width: 300px; }
 #tally {
@@ -79,8 +88,14 @@ body { font-family: var(--body); color: var(--paper); }
   background: transparent;
   transition: background .45s ease, border-color .45s ease;
 }
-.seg-guilty { background: var(--guilty); border-color: var(--guilty); }
-.seg-acquit { background: var(--acquit); border-color: var(--acquit); }
+.seg-guilty  { background: var(--guilty); border-color: var(--guilty); }
+.seg-acquit  { background: var(--acquit); border-color: var(--acquit); }
+/* a blank slip: only a secret ballot can produce one */
+.seg-abstain {
+  background: repeating-linear-gradient(45deg,
+    var(--abstain) 0 3px, transparent 3px 6px);
+  border-color: var(--abstain);
+}
 
 #tally-legend {
   margin-top: 4px;
@@ -90,9 +105,23 @@ body { font-family: var(--body); color: var(--paper); }
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
-.legend-guilty { color: #c96b60; }
-.legend-open   { color: var(--paper-dim); }
-.legend-acquit { color: #7ea98c; }
+.legend-guilty  { color: #c96b60; }
+.legend-open    { color: var(--paper-dim); }
+.legend-abstain { color: #9a927f; }
+.legend-acquit  { color: #7ea98c; }
+
+/* how the last ballot was taken — a secret ballot has to say so, or an
+   empty board just looks like a stalled count */
+#ballot-note {
+  margin-top: 5px;
+  font-family: var(--sans);
+  font-size: .7rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  min-height: .9rem;
+}
+#ballot-note[data-secret="yes"] { color: var(--brass); }
 
 #main { flex: 1; display: flex; overflow: hidden; }
 
@@ -158,6 +187,7 @@ body { font-family: var(--body); color: var(--paper); }
 .seat[data-vote="guilty"]     .plate { border-top: 3px solid var(--guilty); }
 .seat[data-vote="not_guilty"] .plate { border-top: 3px solid var(--acquit); }
 .seat[data-vote="undecided"]  .plate { border-top: 3px solid var(--brass); }
+.seat[data-vote="abstain"]    .plate { border-top: 3px dotted var(--abstain); }
 
 /* a mind may be changing since the last public ballot — hint only,
    never reveals which way */
@@ -176,6 +206,177 @@ body { font-family: var(--body); color: var(--paper); }
   top: -4px; right: -4px;
   font-size: .7rem;
   color: var(--brass);
+}
+
+/* private read of the exhibit is in — same "done, value hidden" language as
+   a ballot, in ink rather than brass so the two never read as the same thing */
+.seat.read-in .avatar { border-color: var(--tungsten); }
+.seat.read-in .avatar::after {
+  content: "\25CF";
+  position: absolute;
+  top: -4px; right: -4px;
+  font-size: .6rem;
+  color: var(--tungsten);
+}
+
+/* a juror who just switched sides on the floor — louder than a ballot
+   repaint, because this one happened in front of everybody */
+.seat.switched { opacity: 1; filter: none; }
+.seat.switched .avatar {
+  border-color: var(--paper);
+  animation: turn .7s ease-out;
+}
+.seat.switched .plate { color: var(--paper); }
+@keyframes turn {
+  0%   { transform: rotateY(0deg)   scale(1);    box-shadow: 0 0 0 rgba(236, 228, 210, 0); }
+  50%  { transform: rotateY(180deg) scale(1.18); box-shadow: 0 0 24px rgba(236, 228, 210, .7); }
+  100% { transform: rotateY(360deg) scale(1);    box-shadow: 0 0 12px rgba(236, 228, 210, .35); }
+}
+
+/* ---- the floor: what is on the table between speeches ---- */
+#floor {
+  flex-shrink: 0;
+  margin: 0 24px;
+  max-height: 34vh;
+  overflow-y: auto;
+  font-family: var(--sans);
+}
+#floor > div { display: none; }
+#floor > div.show { display: block; }
+.floor-label {
+  font-size: .68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin-bottom: 3px;
+}
+
+/* the switch itself, called out on the board */
+#switch-note {
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  font-size: .8rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: rgba(236, 228, 210, .1);
+  border-left: 4px solid var(--paper);
+  border-radius: 3px;
+  animation: bump .4s ease;
+}
+#switch-note[data-vote="guilty"]     { border-left-color: var(--guilty); }
+#switch-note[data-vote="not_guilty"] { border-left-color: var(--acquit); }
+
+/* open requests the foreman has not ruled on yet */
+#requests { margin-bottom: 6px; }
+#request-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.request {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 10px;
+  font-size: .8rem;
+  color: var(--paper-dim);
+  background: rgba(0, 0, 0, .3);
+  border: 1px dashed rgba(194, 162, 98, .45);
+  border-radius: 3px;
+}
+.request-seat {
+  font-family: var(--display);
+  font-size: .95rem;
+  color: var(--brass);
+  flex-shrink: 0;
+}
+.request-kind {
+  font-size: .68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--tungsten);
+  flex-shrink: 0;
+}
+.request-summary { color: var(--paper); font-family: var(--body); font-size: .95rem; }
+.request[data-kind="demand_vote"] { border-style: solid; }
+
+/* the foreman's ruling — up for a beat, then gone */
+#ruling {
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  font-size: .82rem;
+  border-radius: 3px;
+  border-left: 4px solid var(--brass);
+  background: rgba(0, 0, 0, .35);
+  animation: bump .4s ease;
+}
+#ruling[data-granted="yes"] { border-left-color: var(--acquit); }
+#ruling[data-granted="no"]  { border-left-color: var(--guilty); }
+#ruling-verb {
+  font-family: var(--display);
+  letter-spacing: 3px;
+  margin-right: 8px;
+}
+#ruling[data-granted="yes"] #ruling-verb { color: #7ea98c; }
+#ruling[data-granted="no"]  #ruling-verb { color: #c96b60; }
+#ruling-request { color: var(--paper); margin-right: 8px; }
+#ruling-reason  { color: var(--paper-dim); font-family: var(--body); font-size: .95rem; }
+
+/* the record: court paper, not a juror talking */
+#record {
+  margin-bottom: 6px;
+  padding: 8px 12px;
+  color: #2b2721;
+  background:
+    repeating-linear-gradient(180deg,
+      rgba(0, 0, 0, .035) 0 1px, transparent 1px 22px),
+    var(--paper);
+  border: 1px solid #8c826c;
+  border-left: 6px double #8c826c;
+  border-radius: 2px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+}
+#record-head {
+  font-size: .68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #6b6152;
+  border-bottom: 1px solid rgba(0, 0, 0, .18);
+  padding-bottom: 3px;
+  margin-bottom: 5px;
+}
+#record[data-available="no"] #record-head { color: var(--guilty); }
+#record-text {
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+/* the foreman has announced; the bench has not spoken yet */
+#announced {
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  font-size: .78rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--tungsten);
+  border: 1px dashed rgba(233, 195, 152, .55);
+  border-radius: 3px;
+  animation: pending 2s ease-in-out infinite;
+}
+@keyframes pending { 50% { opacity: .55; } }
+
+/* the bench: taking it is quiet, sending them back is not */
+#judge {
+  margin-bottom: 6px;
+  padding: 6px 12px;
+  font-size: .84rem;
+  letter-spacing: 1px;
+  border-radius: 3px;
+  border-left: 4px solid var(--acquit);
+  background: rgba(0, 0, 0, .35);
+  color: var(--paper);
+}
+#judge[data-accepted="no"] {
+  border: 2px solid var(--guilty);
+  background: rgba(166, 61, 51, .22);
+  color: var(--paper);
+  animation: bump .4s ease;
 }
 
 /* ---- dialogue: the spoken record ---- */
@@ -203,6 +404,18 @@ body { font-family: var(--body); color: var(--paper); }
   font-size: 1.25rem;
   line-height: 1.55;
   color: var(--paper);
+}
+/* the room is waiting on an agent — a live gap runs to a minute or more */
+#dialogue.waiting { border-left-color: rgba(194, 162, 98, .35); }
+#dialogue.waiting #dialogue-name { color: var(--paper-dim); }
+#dialogue.waiting #dialogue-text {
+  font-style: italic;
+  color: var(--paper-dim);
+  animation: waiting-pulse 2.4s ease-in-out infinite;
+}
+@keyframes waiting-pulse {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: .95; }
 }
 
 /* ---- controls ---- */
@@ -247,6 +460,24 @@ body { font-family: var(--body); color: var(--paper); }
   outline: 2px solid var(--tungsten); outline-offset: 2px;
 }
 #controls input[type="range"] { accent-color: var(--brass); }
+
+/* the playback slider says what it is: it paces the animation, not the LLMs */
+#speed-label { display: flex; align-items: center; gap: 8px; }
+#speed-value {
+  min-width: 12ch;
+  color: var(--tungsten);
+  text-transform: none;
+  letter-spacing: .5px;
+  font-size: .78rem;
+}
+#speed-note {
+  margin-left: -12px;
+  font-size: .66rem;
+  letter-spacing: 1px;
+  text-transform: none;
+  font-style: italic;
+  color: rgba(185, 176, 160, .75);
+}
 #controls select {
   font-family: var(--sans);
   font-size: .78rem;
@@ -259,7 +490,7 @@ body { font-family: var(--body); color: var(--paper); }
 
 /* ---- side panel: the court record ---- */
 #sidepanel {
-  width: 340px;
+  width: 430px;
   flex-shrink: 0;
   display: flex; flex-direction: column;
   border-left: 1px solid rgba(194, 162, 98, .35);
@@ -293,10 +524,267 @@ body { font-family: var(--body); color: var(--paper); }
   letter-spacing: 2px;
 }
 
-#case-panel { flex: 0 0 auto; max-height: 160px; }
+.panel-note {
+  font-family: var(--sans);
+  font-size: .74rem;
+  line-height: 1.45;
+  color: var(--paper-dim);
+  margin-bottom: 8px;
+}
+.panel-hint {
+  font-family: var(--sans);
+  font-size: .68rem;
+  line-height: 1.35;
+  color: rgba(185, 176, 160, .8);
+  margin-bottom: 3px;
+}
+
+/* the board is the primary reasoning view, so it keeps the room even with
+   the raw trace opened underneath it */
+#board-panel { flex: 3 1 0; min-height: 190px; }
+#case-panel { flex: 0 0 auto; max-height: 180px; }
 #case-panel.collapsed #case-body { display: none; }
-#prompt-panel    { flex: 1; }
-#reasoning-panel { flex: 1; }
+#trace-panel { flex: 0 0 auto; }
+#trace-panel:not(.collapsed) { flex: 2 1 0; min-height: 0; }
+#trace-panel.collapsed #trace-body { display: none; }
+#trace-toggle::before {
+  content: "\25B8 ";
+  color: var(--tungsten);
+}
+#trace-panel:not(.collapsed) #trace-toggle::before { content: "\25BE "; }
+
+/* ---- the position board: one row per exhibit, one square per juror ---- */
+
+/* the exhibit currently in front of the room */
+#exhibit-now { display: none; }
+#exhibit-now.show { display: block; }
+#exhibit-now {
+  margin-bottom: 10px;
+  padding: 7px 10px;
+  border-left: 3px solid var(--tungsten);
+  background: rgba(233, 195, 152, .07);
+  border-radius: 3px;
+}
+#exhibit-now-head {
+  font-family: var(--sans);
+  font-size: .64rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--tungsten);
+}
+#exhibit-now-name {
+  font-family: var(--display);
+  font-size: 1.02rem;
+  color: var(--paper);
+  margin: 2px 0 3px;
+}
+#exhibit-now-claim {
+  font-size: .9rem;
+  line-height: 1.4;
+  color: var(--paper-dim);
+  /* the full claim is on the row's detail block; this is the marquee */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+#exhibit-now-progress {
+  font-family: var(--sans);
+  font-size: .68rem;
+  letter-spacing: 1px;
+  color: var(--tungsten);
+  margin-top: 4px;
+}
+
+.board-empty {
+  font-family: var(--sans);
+  font-size: .76rem;
+  color: var(--paper-dim);
+  padding: 10px 0;
+}
+
+.board-row {
+  border: 1px solid rgba(194, 162, 98, .18);
+  border-radius: 3px;
+  margin-bottom: 5px;
+  background: rgba(0, 0, 0, .22);
+}
+.board-row.current {
+  border-color: rgba(233, 195, 152, .55);
+  background: rgba(233, 195, 152, .06);
+}
+.board-row.open { border-color: rgba(194, 162, 98, .6); }
+
+.board-row-head {
+  display: flex; align-items: baseline; gap: 7px;
+  flex-wrap: wrap;   /* long exhibit names keep the line; the count drops below */
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.board-row-head:hover .board-ex-name { color: var(--tungsten); }
+.board-row-head:focus-visible { outline: 2px solid var(--tungsten); outline-offset: -2px; }
+.board-ex-num {
+  font-family: var(--display);
+  font-size: .85rem;
+  color: var(--brass);
+  flex-shrink: 0;
+  min-width: 1.2em;
+}
+.board-ex-name {
+  font-family: var(--sans);
+  font-size: .8rem;
+  letter-spacing: .5px;
+  color: var(--paper);
+  flex: 1 1 auto;
+  min-width: 9em;
+}
+.board-ex-sum {
+  font-family: var(--sans);
+  font-size: .64rem;
+  letter-spacing: .5px;
+  color: var(--paper-dim);
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.board-row.closed .board-ex-num::after { content: " \2713"; color: var(--acquit); }
+
+.board-cells {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 3px;
+  padding: 0 8px 7px;
+}
+.board-cell {
+  height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--sans);
+  font-size: .6rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  cursor: help;
+  transition: transform .15s;
+}
+.board-cell:hover { transform: translateY(-2px); }
+.board-cell[data-pos="supports_guilt"] {
+  background: var(--guilty); border-color: #7d2c24; color: #f2ded9;
+}
+.board-cell[data-pos="raises_doubt"] {
+  background: var(--acquit); border-color: #3d5c46; color: #e6f0e8;
+}
+.board-cell[data-pos="inconclusive"] {
+  background: var(--abstain); border-color: #55503f; color: #ece7da;
+}
+/* their read is in but the room's positions have not landed yet */
+.board-cell[data-pos="read"] {
+  background: rgba(233, 195, 152, .3);
+  border-color: rgba(233, 195, 152, .6);
+  color: var(--wall-deep);
+}
+.board-cell[data-pos="pending"] {
+  background: rgba(255, 255, 255, .04);
+  border: 1px dashed rgba(194, 162, 98, .3);
+  color: rgba(185, 176, 160, .5);
+}
+/* one agent reading the same paper differently — the whole point of the
+   board, so it gets a ring rather than needing to be counted by eye */
+.board-cell.outlier {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 8px rgba(236, 228, 210, .5);
+  border-color: var(--paper);
+  font-weight: 600;
+}
+
+#board-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 10px;
+  margin-top: 8px;
+  font-family: var(--sans);
+  font-size: .62rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+#board-legend .key { display: flex; align-items: center; gap: 4px; }
+#board-legend .key::before {
+  content: "";
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+}
+#board-legend .key[data-pos="supports_guilt"]::before { background: var(--guilty); }
+#board-legend .key[data-pos="raises_doubt"]::before   { background: var(--acquit); }
+#board-legend .key[data-pos="inconclusive"]::before   { background: var(--abstain); }
+#board-legend .key[data-pos="pending"]::before {
+  border: 1px dashed rgba(194, 162, 98, .5);
+}
+
+/* the expanded row: reasons, the room's finding, and the film's */
+.board-detail {
+  padding: 2px 10px 9px;
+  border-top: 1px solid rgba(194, 162, 98, .18);
+}
+.detail-block { margin-top: 7px; }
+.detail-label {
+  font-family: var(--sans);
+  font-size: .62rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin: 8px 0 2px;
+}
+.detail-text {
+  font-size: .92rem;
+  line-height: 1.4;
+  color: var(--paper);
+}
+.detail-block.ours  { border-left: 3px solid var(--tungsten); padding-left: 8px; }
+.detail-block.ours .detail-label { color: var(--tungsten); margin-top: 0; }
+/* the film's finding is a different kind of thing: it is not evidence and no
+   agent has ever seen it, so it reads as a footnote, not as testimony */
+.detail-block.film  { border-left: 3px solid var(--paper-dim); padding-left: 8px; }
+.detail-block.film .detail-label { color: var(--paper-dim); margin-top: 0; }
+.detail-block.film .detail-text { font-style: italic; color: var(--paper-dim); }
+.detail-block.claim .detail-text { color: var(--paper-dim); font-size: .88rem; }
+
+.detail-reasons { list-style: none; }
+.detail-reasons li {
+  display: grid;
+  grid-template-columns: 9.5em 7.5em 1fr;
+  gap: 6px;
+  padding: 3px 0;
+  border-top: 1px solid rgba(194, 162, 98, .12);
+  font-size: .84rem;
+  line-height: 1.35;
+}
+.detail-seat {
+  font-family: var(--sans);
+  font-size: .72rem;
+  color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.detail-pos {
+  font-family: var(--sans);
+  font-size: .62rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+li[data-pos="supports_guilt"] .detail-pos { color: #c96b60; }
+li[data-pos="raises_doubt"]   .detail-pos { color: #7ea98c; }
+li[data-pos="inconclusive"]   .detail-pos { color: #9a927f; }
+.detail-why { color: var(--paper-dim); }
+.detail-reasons li.outlier {
+  background: rgba(236, 228, 210, .07);
+  border-left: 3px solid var(--paper);
+  padding-left: 5px;
+}
+.detail-reasons li.outlier .detail-seat { color: var(--tungsten); }
 
 /* case file reads like a typed exhibit */
 #case-text {
@@ -328,9 +816,11 @@ body { font-family: var(--body); color: var(--paper); }
 /* subtle brass scrollbars */
 .panel-body::-webkit-scrollbar,
 .trace-box::-webkit-scrollbar,
+#floor::-webkit-scrollbar,
 #case-text::-webkit-scrollbar { width: 8px; }
 .panel-body::-webkit-scrollbar-thumb,
 .trace-box::-webkit-scrollbar-thumb,
+#floor::-webkit-scrollbar-thumb,
 #case-text::-webkit-scrollbar-thumb {
   background: rgba(194, 162, 98, .35); border-radius: 4px;
 }

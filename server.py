@@ -19,8 +19,10 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 import tts
-from live_agents import live_foreman_fn, live_juror_fn
-from loader import DEFAULT_CASE, list_cases, load_cards, load_case
+from live_agents import (live_assess_fn, live_bailiff_fn, live_foreman_fn,
+                         live_judge_fn, live_juror_fn)
+from loader import (DEFAULT_CASE, list_cases, load_cards, load_case,
+                    load_film_findings)
 from orchestrator import Deliberation
 
 VOTE_CALL_LINE = "Alright — let's take a vote."
@@ -41,7 +43,7 @@ async def _lifespan(_app: FastAPI):
         # generate narration now so /start doesn't block on TTS
         try:
             for case_id in list_cases():
-                tts.narrate(load_case(case_id))
+                tts.narrate(load_case(case_id)["narrative"])
             tts.narrate(VOTE_CALL_LINE)
             logger.info("narration pre-warmed")
         except Exception as exc:
@@ -55,12 +57,18 @@ app = FastAPI(lifespan=_lifespan)
 
 
 def _attach_narration(event):
-    """Announcer audio for the case reading and each vote call."""
+    """Announcer audio for the case reading, vote calls, and the court's
+    own words — what the officer reads back and what the judge rules are
+    spoken by the room, not by a juror."""
     try:
         if event["type"] == "case":
             event["audio"] = tts.narrate(event["text"])
         elif event["type"] == "vote_called":
             event["audio"] = tts.narrate(VOTE_CALL_LINE)
+        elif event["type"] == "record":
+            event["audio"] = tts.narrate(event["text"])
+        elif event["type"] == "judge_ruling" and event.get("instruction"):
+            event["audio"] = tts.narrate(event["instruction"])
     except Exception as exc:
         logger.warning("narration failed for %s: %s", event["type"], exc)
     return event
@@ -79,6 +87,16 @@ async def cases():
     return {"cases": list_cases(), "default": DEFAULT_CASE}
 
 
+@app.get("/film/{case_id}")
+async def film(case_id: str):
+    """What the film concluded about each exhibit, so the UI can show where
+    this jury of agents diverged. Served separately from the case on purpose:
+    this text must never reach an agent's prompt."""
+    if not _TRANSCRIPT_ID.match(case_id):
+        raise HTTPException(status_code=400, detail="invalid case id")
+    return {"findings": load_film_findings(case_id)}
+
+
 @app.get("/status")
 async def status():
     """Lets a freshly loaded page discover a deliberation already in
@@ -91,9 +109,14 @@ async def status():
 async def start(case_id: str | None = None):
     if _running.is_set():
         return {"status": "already-running"}
+    # Everything that can fail has to fail BEFORE the running flag goes up.
+    # Loading the cards outside this try left _running set on a bad card file
+    # with no thread alive to clear it, and /stop cannot clear it either — the
+    # server was wedged into "already-running" until it was restarted.
     try:
-        case_text = load_case(case_id)
-    except ValueError as exc:
+        case = load_case(case_id)
+        cards = load_cards()
+    except (ValueError, OSError, json.JSONDecodeError) as exc:
         return {"status": "error", "message": str(exc)}
     _running.set()
     _stop_requested.clear()
@@ -104,9 +127,12 @@ async def start(case_id: str | None = None):
         logger.debug("emit: %s", event.get("type"))
         loop.call_soon_threadsafe(_publish, _attach_narration(event))
 
-    delib = Deliberation(case_text, load_cards(),
+    delib = Deliberation(case, cards,
                          live_juror_fn, live_foreman_fn, emit,
-                         should_stop=_stop_requested.is_set)
+                         should_stop=_stop_requested.is_set,
+                         bailiff_fn=live_bailiff_fn,
+                         judge_fn=live_judge_fn,
+                         assess_fn=live_assess_fn)
 
     def work():
         try:

@@ -1,6 +1,9 @@
 """Pure vote-counting helpers. No I/O, no LLM."""
 
-VOTE_VALUES = ("guilty", "not_guilty", "undecided")
+# A juror who abstains on a secret ballot has not voted at all — that is a
+# deliberate act on the floor, distinct from being undecided, and it can never
+# add up to a unanimous verdict.
+VOTE_VALUES = ("guilty", "not_guilty", "undecided", "abstain")
 
 
 def tally(votes):
@@ -12,9 +15,12 @@ def tally(votes):
 
 
 def unanimous(counts):
-    """Return the verdict string if all 12 agree, else None."""
-    if counts["guilty"] == 12:
+    """Return the verdict string if every juror agrees, else None."""
+    total = sum(counts.values())
+    if not total:
+        return None
+    if counts["guilty"] == total:
         return "guilty"
-    if counts["not_guilty"] == 12:
+    if counts["not_guilty"] == total:
         return "not_guilty"
     return None

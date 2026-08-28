@@ -1,0 +1,55 @@
+{
+  "title": "The State v. the Defendant",
+  "charge": "First-degree murder. A guilty verdict carries a mandatory death sentence.",
+  "exhibits": [
+    {
+      "id": "the_knife",
+      "name": "The switchblade",
+      "prosecution_claim": "The murder weapon is the same unusual switchblade the defendant bought hours earlier, and the storekeeper says it was the only one of its kind he had.",
+      "record": "The father was killed with a single stab wound from a switchblade with a carved handle. The defendant bought an identical knife at about 8:45 p.m. and says he lost it through a hole in his pocket. The knife in the chest had been wiped of fingerprints. The storekeeper testified it was the only one of its kind in stock.",
+      "film_finding": "Juror 8 produces an identical knife he bought for a few dollars near the boy's home, destroying the 'one of a kind' claim."
+    },
+    {
+      "id": "the_old_man",
+      "name": "The old man downstairs",
+      "prosecution_claim": "He heard the boy shout 'I'm going to kill you', heard the body fall, and got to his door in fifteen seconds in time to see the boy running down the stairs.",
+      "record": "The witness lives directly below the apartment. He dragged one leg after a stroke last year. His apartment is a 12-metre hallway from bedroom to front door. He testified he reached his door in about 15 seconds.",
+      "film_finding": "The jury paces out the distance and times it: a man with that limp needs far longer than fifteen seconds, so he cannot have seen what he says he saw."
+    },
+    {
+      "id": "the_el_train",
+      "name": "The elevated train",
+      "prosecution_claim": "The train is incidental; the witnesses saw and heard what they say they did.",
+      "record": "A six-car elevated train was passing the window at the time of the killing. A passing el takes about ten seconds to clear a given point, and it is very loud. The woman said the last two cars were passing as she looked.",
+      "film_finding": "With the el roaring past, the old man could not have heard the shout at all — the noise makes his testimony impossible, not merely doubtful."
+    },
+    {
+      "id": "the_woman_across",
+      "name": "The woman across the street",
+      "prosecution_claim": "She looked out of her window and watched the defendant stab his father, and identified him in court.",
+      "record": "She lives opposite the boy's window, across the elevated tracks. She testified she was in bed, looked out, and saw the killing through the windows of a passing el train. She wore no glasses in court and has marks on the sides of her nose.",
+      "film_finding": "Juror 9 realises the marks mean she wears glasses; nobody wears glasses to bed, so she saw a blur — the eyewitness case collapses."
+    },
+    {
+      "id": "the_alibi",
+      "name": "The defendant's alibi",
+      "prosecution_claim": "He claims he was at the movies but could not name a single film or actor, and nobody at the theatre remembers him.",
+      "record": "The defendant says he was at the movies from 11:30 p.m. to 3:10 a.m. Under police questioning hours after his father's death he could not remember the titles or the stars. No one at the theatre remembered seeing him.",
+      "film_finding": "The jury tests memory under emotional shock on one of their own, who also fumbles recent details — the lapse is human, not proof of a lie."
+    },
+    {
+      "id": "the_wound_angle",
+      "name": "The angle of the wound",
+      "prosecution_claim": "The boy stabbed his father in the chest with the switchblade he had bought that evening.",
+      "record": "The wound angled downward into the chest. The defendant is 5'7\"; his father was 6'2\". The defendant has an arrest at 15 for knife-fighting.",
+      "film_finding": "A juror who grew up around knife fights shows that a switchblade is used underhanded and upward — the downward wound is wrong for an experienced knife fighter of the boy's height."
+    },
+    {
+      "id": "the_defendant_record",
+      "name": "The defendant's record and character",
+      "prosecution_claim": "A boy from the slums with arrests for knife-fighting, car theft and mugging, who fought his father that night, is exactly the kind who does this.",
+      "record": "The defendant was arrested at 15 for knife-fighting, and for car theft and mugging. He and his father were heard arguing at about 8:00 p.m.; neighbours say the father struck him twice. He admits the fight and says that is why he left.",
+      "film_finding": "The room's prejudice is dragged into the open and rejected: the jurors who vote on background rather than evidence are isolated and, one by one, abandoned."
+    }
+  ]
+}
