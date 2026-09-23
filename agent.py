@@ -87,7 +87,8 @@ def _ask_claude_cli(system_prompt, user_prompt, timeout, model):
     ]
     try:
         proc = subprocess.run(cmd, cwd=_WORKDIR, capture_output=True,
-                              text=True, timeout=timeout)
+                              text=True, timeout=timeout,
+                              env={**os.environ, "CAVE_WORKFLOW": "twelve-angry-jury"})
     except subprocess.TimeoutExpired:
         raise AgentError(f"claude timed out after {timeout}s")
     except FileNotFoundError:
